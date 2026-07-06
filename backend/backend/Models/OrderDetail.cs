@@ -9,8 +9,10 @@ namespace backend.Models
         public int Id { get; set; }
         [Required]
         public int Quantity { get; set; }
-        [Required, Column(TypeName ="decimal(10,2)")]
-        public double Price { get; set; }
+
+        [Required]
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal Price { get; set; }
 
         [Required]
         public int OrderId { get; set; }

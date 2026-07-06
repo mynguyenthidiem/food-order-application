@@ -107,9 +107,10 @@ namespace backend.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<bool>("Status")
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("bit");
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 

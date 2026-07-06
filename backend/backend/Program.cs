@@ -1,4 +1,8 @@
 using backend.Data;
+using backend.Repositories;
+using backend.Repositories.Interfaces;
+using backend.Services;
+using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,6 +18,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Đăng ký sử dụng interface
 //builder.Services.AddScoped<IFruitRepository, FruitRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
+builder.Services.AddScoped<IFoodRepository, FoodRepository>();
+builder.Services.AddScoped<IFoodService, FoodService>();
+
+builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<ICartService, CartService>();
+
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 // Add services to the container.
 builder.Services.AddControllers();

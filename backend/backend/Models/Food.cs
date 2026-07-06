@@ -17,7 +17,7 @@ namespace backend.Models
         public string? Image { get; set; }
 
         [StringLength(20)]
-        public bool Status { get; set; }
+        public string Status { get; set; } = "Available";
 
         [Required]
         public int CategoryId { get; set; }
