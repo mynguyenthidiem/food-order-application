@@ -14,9 +14,10 @@ namespace backend.Models
         [StringLength(300)]
         public string? Description { get; set; }
 
+        public bool IsActive { get; set; } = true;
         [StringLength(300)]
         public string? Image { get; set; }
 
-        public virtual ICollection<Food> Foods{ get; set; } = new List<Food>();
+        public virtual ICollection<Food> Foods { get; set; } = new List<Food>();
     }
 }

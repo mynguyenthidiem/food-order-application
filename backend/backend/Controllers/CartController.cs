@@ -1,113 +1,84 @@
 ﻿using backend.DTOs.Cart;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 namespace backend.Controllers
 {
+    [Authorize]
     [Route("api/cart")]
     [ApiController]
     public class CartController : ControllerBase
     {
         private readonly ICartService _service;
-
+        private int GetCurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         public CartController(ICartService service)
         {
             _service = service;
         }
 
-        // GET: api/cart
         [HttpGet]
         public async Task<IActionResult> GetCart()
         {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
-            var carts = await _service.GetCartAsync(userId);
-
+            var carts = await _service.GetCartAsync(GetCurrentUserId());
             return Ok(carts);
         }
 
-        // POST: api/cart
         [HttpPost]
         public async Task<IActionResult> AddToCart(AddCartDto dto)
         {
-            // TODO: Lấy UserId từ JWT
-            int userId = 1;
-
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
             try
             {
-                var cart = await _service.AddToCartAsync(userId, dto);
-
+                var cart = await _service.AddToCartAsync(GetCurrentUserId(), dto);
                 return Ok(cart);
             }
             catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-        // PUT: api/cart/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCart(int id, UpdateCartDto dto)
         {
-            // TODO: Lấy UserId từ JWT
-            int userId = 1;
-
-            var result = await _service.UpdateCartAsync(userId, id, dto);
-
-            if (!result)
+            if (!ModelState.IsValid)
             {
-                return NotFound(new
-                {
-                    message = "Cart item not found."
-                });
+                return BadRequest(ModelState);
             }
-
-            return Ok(new
+            try
             {
-                message = "Cart updated successfully."
-            });
+                await _service.UpdateCartAsync(GetCurrentUserId(), id, dto);
+                return Ok(new { message = "Cart updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        // DELETE: api/cart/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCart(int id)
         {
-            // TODO: Lấy UserId từ JWT
-            int userId = 1;
-
-            var result = await _service.DeleteCartAsync(userId, id);
-
-            if (!result)
+            try
             {
-                return NotFound(new
-                {
-                    message = "Cart item not found."
-                });
+                await _service.DeleteCartAsync(GetCurrentUserId(), id);
+                return Ok(new { message = "Cart deleted successfully." });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                message = "Cart deleted successfully."
-            });
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        // DELETE: api/cart/clear
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart()
         {
-            // TODO: Lấy UserId từ JWT
-            int userId = 1;
-
-            await _service.ClearCartAsync(userId);
-
-            return Ok(new
-            {
-                message = "Cart cleared successfully."
-            });
+            await _service.ClearCartAsync(GetCurrentUserId());
+            return Ok(new { message = "Cart cleared successfully." });
         }
     }
 }

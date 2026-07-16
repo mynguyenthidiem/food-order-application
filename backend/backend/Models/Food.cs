@@ -16,18 +16,23 @@ namespace backend.Models
         public decimal Price { get; set; }
         public string? Image { get; set; }
 
-        [StringLength(20)]
-        public string Status { get; set; } = "Available";
+        public FoodStatus Status { get; set; } = FoodStatus.Available;
 
         [Required]
         public int CategoryId { get; set; }
         [ForeignKey(nameof(CategoryId))]
-        public virtual Category? Category { get; set; }
+        public virtual Category Category { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
         public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+    }
+
+    public enum FoodStatus
+    {
+        Available,
+        Unavailable
     }
 }

@@ -17,7 +17,6 @@ namespace backend.Services
         public async Task<IEnumerable<CategoryDto>> GetAllAsync()
         {
             var categories = await _repository.GetAllAsync();
-
             return categories.Select(c => new CategoryDto
             {
                 Id = c.Id,
@@ -30,10 +29,10 @@ namespace backend.Services
         public async Task<CategoryDto?> GetByIdAsync(int id)
         {
             var category = await _repository.GetByIdAsync(id);
-
             if (category == null)
-                return null;
-
+            {
+                throw new Exception("Category not found.");
+            }
             return new CategoryDto
             {
                 Id = category.Id,
@@ -51,9 +50,7 @@ namespace backend.Services
                 Description = dto.Description,
                 Image = dto.Image
             };
-
             await _repository.CreateAsync(category);
-
             return new CategoryDto
             {
                 Id = category.Id,
@@ -66,28 +63,26 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, UpdateCategoryDto dto)
         {
             var category = await _repository.GetByIdAsync(id);
-
             if (category == null)
-                return false;
-
+            {
+                throw new Exception("Category not found.");
+            }
             category.Name = dto.Name;
             category.Description = dto.Description;
             category.Image = dto.Image;
-
             await _repository.UpdateAsync(category);
-
             return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
             var category = await _repository.GetByIdAsync(id);
-
             if (category == null)
-                return false;
-
-            await _repository.DeleteAsync(category);
-
+            {
+                throw new Exception("Category not found.");
+            }
+            category.IsActive = false;
+            await _repository.UpdateAsync(category);
             return true;
         }
     }

@@ -3,7 +3,7 @@ using backend.Models;
 using backend.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace backend.Repositories 
+namespace backend.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
@@ -17,6 +17,7 @@ namespace backend.Repositories
         public async Task<IEnumerable<Category>> GetAllAsync()
         {
             return await _context.Categories
+                .Where(c => c.IsActive)
                 .OrderBy(x => x.Name)
                 .ToListAsync();
         }
@@ -45,7 +46,7 @@ namespace backend.Repositories
 
         public async Task DeleteAsync(Category category)
         {
-            _context.Categories.Remove(category);
+            category.IsActive = false;
 
             await _context.SaveChangesAsync();
         }

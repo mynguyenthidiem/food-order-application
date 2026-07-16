@@ -7,6 +7,8 @@ namespace backend.Repositories.Interfaces
     {
         // Order
         Task<IEnumerable<Order>> GetUserOrdersAsync(int userId);
+        Task<IEnumerable<Cart>> GetSelectedCartAsync(int userId, List<int> cartIds);
+        Task ClearSelectedCartAsync(int userId, List<int> cartIds);
         Task<Order?> GetByIdAsync(int id);
         Task CreateOrderAsync(Order order);
         Task UpdateOrderAsync(Order order);

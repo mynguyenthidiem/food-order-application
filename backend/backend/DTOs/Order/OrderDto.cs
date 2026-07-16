@@ -1,4 +1,6 @@
-﻿namespace backend.DTOs.Order
+﻿using backend.Models;
+
+namespace backend.DTOs.Order
 {
     public class OrderDto
     {
@@ -6,7 +8,7 @@
 
         public DateTime OrderDate { get; set; }
 
-        public string Status { get; set; } = string.Empty;
+        public OrderStatus Status { get; set; } 
 
         public decimal TotalAmount { get; set; }
 

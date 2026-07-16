@@ -1,9 +1,12 @@
 ﻿using backend.DTOs.Order;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    [Authorize]
     [Route("api/orders")]
     [ApiController]
     public class OrderController : ControllerBase
@@ -15,49 +18,24 @@ namespace backend.Controllers
             _service = service;
         }
 
-        // GET: api/orders
+        private int GetCurrentUserId()
+        {
+            return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetOrders()
         {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
-            var orders = await _service.GetOrdersAsync(userId);
-
+            var orders = await _service.GetOrdersAsync(GetCurrentUserId());
             return Ok(orders);
         }
 
-        // GET: api/orders/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrder(int id)
         {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
-            var order = await _service.GetOrderByIdAsync(userId, id);
-
-            if (order == null)
-            {
-                return NotFound(new
-                {
-                    message = "Order not found."
-                });
-            }
-
-            return Ok(order);
-        }
-
-        // POST: api/orders
-        [HttpPost]
-        public async Task<IActionResult> CreateOrder(CreateOrderDto dto)
-        {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
             try
             {
-                var order = await _service.CreateOrderAsync(userId, dto);
-
+                var order = await _service.GetOrderByIdAsync(GetCurrentUserId(), id);
                 return Ok(order);
             }
             catch (Exception ex)
@@ -69,70 +47,61 @@ namespace backend.Controllers
             }
         }
 
-        // PUT: api/orders/{id}
+        [HttpPost]
+        public async Task<IActionResult> CreateOrder(CreateOrderDto dto)
+        {
+            try
+            {
+                var order = await _service.CreateOrderAsync(GetCurrentUserId(), dto);
+                return Ok(order);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateOrder(int id, UpdateOrderDto dto)
         {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
-            var result = await _service.UpdateOrderAsync(userId, id, dto);
-
-            if (!result)
+            try
             {
-                return NotFound(new
-                {
-                    message = "Order not found."
-                });
+                await _service.UpdateOrderAsync(GetCurrentUserId(), id, dto);
+                return Ok(new { message = "Order updated successfully." });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                message = "Order updated successfully."
-            });
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        // DELETE: api/orders/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteOrder(int id)
         {
-            // TODO: Lấy UserId từ JWT sau khi hoàn thành Authentication
-            int userId = 1;
-
-            var result = await _service.DeleteOrderAsync(userId, id);
-
-            if (!result)
+            try
             {
-                return NotFound(new
-                {
-                    message = "Order not found."
-                });
+                await _service.DeleteOrderAsync(GetCurrentUserId(), id);
+                return Ok(new { message = "Order cancelled successfully." });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                message = "Order deleted successfully."
-            });
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        // PUT: api/orders/{id}/status
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, UpdateOrderStatusDto dto)
         {
-            var result = await _service.UpdateOrderStatusAsync(id, dto);
-
-            if (!result)
+            try
             {
-                return NotFound(new
-                {
-                    message = "Order not found."
-                });
+                await _service.UpdateOrderStatusAsync(id, dto);
+                return Ok(new { message = "Order status updated successfully." });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                message = "Order status updated successfully."
-            });
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

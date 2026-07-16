@@ -1,4 +1,6 @@
-﻿namespace backend.DTOs.Food
+﻿using backend.Models;
+
+namespace backend.DTOs.Food
 {
     public class FoodDto
     {
@@ -12,7 +14,7 @@
 
         public string? Image { get; set; }
 
-        public string Status { get; set; } = "";
+        public FoodStatus Status { get; set; } 
 
         public int CategoryId { get; set; }
 

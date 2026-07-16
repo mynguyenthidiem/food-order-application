@@ -19,6 +19,7 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
+                .Where(f => f.Status != FoodStatus.Unavailable)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
@@ -28,6 +29,12 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
+
+                // Load dữ liệu đang tham chiếu Food
+                .Include(f => f.OrderDetails)
+
+                .Include(f => f.Carts)
+
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
 
@@ -36,7 +43,7 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
-                .Where(f => f.CategoryId == categoryId)
+                .Where(f => f.CategoryId == categoryId && f.Status != FoodStatus.Unavailable)
                 .OrderBy(f => f.Name)
                 .ToListAsync();
         }
@@ -48,10 +55,10 @@ namespace backend.Repositories
 
             return await _context.Foods
                 .Include(f => f.Category)
-                .Where(f =>
+                .Where(f => f.Status != FoodStatus.Unavailable && (
                     f.Name.ToLower().Contains(keyword) ||
                     (f.Description != null &&
-                     f.Description.ToLower().Contains(keyword)))
+                     f.Description.ToLower().Contains(keyword))))
                 .OrderBy(f => f.Name)
                 .ToListAsync();
         }
@@ -77,7 +84,7 @@ namespace backend.Repositories
         // DELETE
         public async Task DeleteAsync(Food food)
         {
-            _context.Foods.Remove(food);
+            food.Status = FoodStatus.Unavailable;
 
             await _context.SaveChangesAsync();
         }
@@ -91,7 +98,10 @@ namespace backend.Repositories
         public async Task<bool> CategoryExistsAsync(int categoryId)
         {
             return await _context.Categories
-                .AnyAsync(c => c.Id == categoryId);
+                .AnyAsync(c =>
+                    c.Id == categoryId
+                    &&
+                    c.IsActive);
         }
     }
 }

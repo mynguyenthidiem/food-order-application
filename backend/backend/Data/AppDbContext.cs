@@ -75,6 +75,10 @@ namespace backend.Data
                 .HasForeignKey(o => o.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Order>()
+                .Property(o => o.Status)
+                .HasConversion<string>();
+
             // OrderDetail -> Order (cascade) / Food (restrict)
             modelBuilder.Entity<OrderDetail>()
                 .HasOne(od => od.Order)
@@ -99,6 +103,14 @@ namespace backend.Data
                 .HasForeignKey<Payment>(p => p.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Payment>()
+                .Property(o => o.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Review>()
+                .HasIndex(r => new { r.UserId, r.FoodId })
+                .IsUnique();
+
             // Review -> User / Food
             modelBuilder.Entity<Review>()
                 .HasOne(r => r.User)
@@ -118,6 +130,9 @@ namespace backend.Data
                 .WithMany(c => c.Foods)
                 .HasForeignKey(f => f.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Food>()
+                .Property(o => o.Status)
+                .HasConversion<string>();
         }
     }
 }

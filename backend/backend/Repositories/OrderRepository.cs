@@ -25,6 +25,25 @@ namespace backend.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Cart>> GetSelectedCartAsync(int userId, List<int> cartIds)
+        {
+            return await _context.Carts
+                .Include(c => c.Food)
+                .Where(c => c.UserId == userId &&
+                            cartIds.Contains(c.Id))
+                .ToListAsync();
+        }
+
+        public async Task ClearSelectedCartAsync(int userId, List<int> cartIds)
+        {
+            var carts = await _context.Carts
+                .Where(c => c.UserId == userId &&
+                            cartIds.Contains(c.Id))
+                .ToListAsync();
+
+            _context.Carts.RemoveRange(carts);
+        }
+
         public async Task<Order?> GetByIdAsync(int id)
         {
             return await _context.Orders

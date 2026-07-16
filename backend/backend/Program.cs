@@ -1,4 +1,5 @@
 using backend.Data;
+using backend.Models;
 using backend.Repositories;
 using backend.Repositories.Interfaces;
 using backend.Services;
@@ -30,6 +31,15 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
+
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -39,11 +49,11 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Nhập JWT token vào đây (dạng: Bearer {token})",
+        Description = "Nhập nguyên văn chuỗi Token của bạn vào đây (Không gõ chữ Bearer)",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
+        Scheme = "Bearer", // 🛠️ SỬA THÀNH CHỮ "Bearer" VIẾT HOA CHUẨN
         BearerFormat = "JWT"
     });
 
@@ -71,19 +81,59 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = true,
-            //Nếu hay bị lỗi 401 thì có thể chuyển ValidateIssuer và ValidateAudience thành false
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
         };
     });
 builder.Services.AddAuthorization();
 
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    // Seed Roles
+    if (!context.Roles.Any())
+    {
+        context.Roles.AddRange(
+            new Role { Name = "Admin" },
+            new Role { Name = "User" }
+        );
+
+        context.SaveChanges();
+    }
+
+    // Seed Admin
+    if (!context.Users.Any(u => u.Email == "admin@gmail.com"))
+    {
+        var admin = new User
+        {
+            FullName = "Administrator",
+            Email = "admin@gmail.com",
+            Password = BCrypt.Net.BCrypt.HashPassword("123456"),
+            IsActive = true
+        };
+
+        context.Users.Add(admin);
+        context.SaveChanges();
+
+        var adminRole = context.Roles.First(r => r.Name == "Admin");
+
+        context.UserRoles.Add(new UserRole
+        {
+            UserId = admin.Id,
+            RoleId = adminRole.Id
+        });
+
+        context.SaveChanges();
+    }
+}
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

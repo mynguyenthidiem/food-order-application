@@ -1,10 +1,11 @@
 ﻿using backend.DTOs.Food;
 using backend.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.Authorization;
 namespace backend.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class FoodsController : ControllerBase
@@ -16,7 +17,7 @@ namespace backend.Controllers
             _service = service;
         }
 
-        // GET: api/foods
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -24,113 +25,96 @@ namespace backend.Controllers
             return Ok(foods);
         }
 
-        // GET: api/foods/5
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var food = await _service.GetByIdAsync(id);
-
-            if (food == null)
-                return NotFound(new
-                {
-                    message = "Food not found."
-                });
-
-            return Ok(food);
+            try
+            {
+                var food = await _service.GetByIdAsync(id);
+                return Ok(food);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
         }
 
-        // GET: api/foods/category/2
+        [AllowAnonymous]
         [HttpGet("category/{id}")]
         public async Task<IActionResult> GetByCategory(int id)
         {
             var foods = await _service.GetByCategoryAsync(id);
-
             return Ok(foods);
         }
 
-        // GET: api/foods/search?keyword=burger
+        [AllowAnonymous]
         [HttpGet("search")]
         public async Task<IActionResult> Search([FromQuery] string keyword)
         {
             if (string.IsNullOrWhiteSpace(keyword))
             {
-                return BadRequest(new
-                {
-                    message = "Keyword is required."
-                });
+                return BadRequest(new { message = "Keyword is required." });
             }
-
             var foods = await _service.SearchAsync(keyword);
-
             return Ok(foods);
         }
 
-        // POST: api/foods
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(CreateFoodDto dto)
         {
             try
             {
                 var food = await _service.CreateAsync(dto);
-
-                return CreatedAtAction(
-                    nameof(GetById),
-                    new { id = food.Id },
-                    food);
+                return CreatedAtAction(nameof(GetById), new { id = food.Id }, food);
             }
             catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-        // PUT: api/foods/5
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, UpdateFoodDto dto)
         {
             try
             {
                 var result = await _service.UpdateAsync(id, dto);
-
                 if (!result)
-                    return NotFound(new
-                    {
-                        message = "Food not found."
-                    });
-
-                return Ok(new
                 {
-                    message = "Food updated successfully."
-                });
+                    return NotFound(new { message = "Food not found." });
+                }
+                return Ok(new { message = "Food updated successfully." });
             }
             catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-        // DELETE: api/foods/5
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var result = await _service.DeleteAsync(id);
-
-            if (!result)
-                return NotFound(new
-                {
-                    message = "Food not found."
-                });
-
-            return Ok(new
+            try
             {
-                message = "Food deleted successfully."
-            });
+                var result = await _service.DeleteAsync(id);
+                if (!result)
+                {
+                    return NotFound(new { message = "Food not found." });
+                }
+                return Ok(new { message = "Food deleted successfully." });
+            }
+            catch (DbUpdateException)
+            {
+                return Conflict(new { message = "Cannot delete food because it exists in cart or order." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

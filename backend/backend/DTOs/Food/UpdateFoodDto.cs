@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using backend.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs.Food
 {
@@ -17,9 +18,7 @@ namespace backend.DTOs.Food
 
         public string? Image { get; set; }
 
-        [Required]
-        [StringLength(20)]
-        public string Status { get; set; } = "Available";
+        public FoodStatus Status { get; set; }
 
         [Required]
         public int CategoryId { get; set; }

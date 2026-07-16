@@ -13,24 +13,26 @@ namespace backend.Services
         {
             _repository = repository;
         }
+
         public async Task<IEnumerable<OrderDto>> GetOrdersAsync(int userId)
         {
             var orders = await _repository.GetUserOrdersAsync(userId);
-
             return orders.Select(MapToDto);
         }
-        public async Task<OrderDto?> GetOrderByIdAsync(int userId, int orderId)
+
+        public async Task<OrderDto> GetOrderByIdAsync(int userId, int orderId)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                return null;
+                throw new Exception("Order not found.");
 
             if (order.UserId != userId)
-                return null;
+                throw new Exception("You are not allowed to view this order.");
 
             return MapToDto(order);
         }
+
         private static OrderDto MapToDto(Order order)
         {
             return new OrderDto
@@ -52,14 +54,14 @@ namespace backend.Services
                 }).ToList()
             };
         }
+
         public async Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto dto)
         {
             await using var transaction = await _repository.BeginTransactionAsync();
 
             try
             {
-                var carts = (await _repository.GetUserCartAsync(userId)).ToList();
-
+                var carts = (await _repository.GetSelectedCartAsync(userId, dto.CartIds)).ToList();
                 if (!carts.Any())
                     throw new Exception("Cart is empty.");
 
@@ -67,7 +69,7 @@ namespace backend.Services
                 {
                     UserId = userId,
                     OrderDate = DateTime.UtcNow,
-                    Status = "Pending",
+                    Status = OrderStatus.Pending,
                     ShippingAddress = dto.ShippingAddress,
                     PaymentMethod = dto.PaymentMethod,
                     TotalAmount = 0
@@ -83,7 +85,6 @@ namespace backend.Services
                 foreach (var cart in carts)
                 {
                     decimal price = cart.Food!.Price;
-
                     decimal subTotal = price * cart.Quantity;
 
                     totalAmount += subTotal;
@@ -102,7 +103,7 @@ namespace backend.Services
 
                 order.TotalAmount = totalAmount;
 
-                await _repository.ClearCartAsync(userId);
+                await _repository.ClearSelectedCartAsync(userId, dto.CartIds);
 
                 await _repository.SaveChangesAsync();
 
@@ -110,7 +111,10 @@ namespace backend.Services
 
                 var createdOrder = await _repository.GetByIdAsync(order.Id);
 
-                return MapToDto(createdOrder!);
+                if (createdOrder == null)
+                    throw new Exception("Failed to load created order.");
+
+                return MapToDto(createdOrder);
             }
             catch
             {
@@ -118,15 +122,19 @@ namespace backend.Services
                 throw;
             }
         }
+
         public async Task<bool> UpdateOrderAsync(int userId, int orderId, UpdateOrderDto dto)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                return false;
+                throw new Exception("Order not found.");
 
             if (order.UserId != userId)
-                return false;
+                throw new Exception("You are not allowed to update this order.");
+
+            if (order.Status != OrderStatus.Pending)
+                throw new Exception("Only pending orders can be updated.");
 
             order.ShippingAddress = dto.ShippingAddress;
             order.PaymentMethod = dto.PaymentMethod;
@@ -135,32 +143,72 @@ namespace backend.Services
 
             return true;
         }
+
         public async Task<bool> DeleteOrderAsync(int userId, int orderId)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                return false;
+                throw new Exception("Order not found.");
 
             if (order.UserId != userId)
-                return false;
+                throw new Exception("You are not allowed to delete this order.");
 
             await _repository.DeleteOrderAsync(order);
 
             return true;
         }
+
         public async Task<bool> UpdateOrderStatusAsync(int orderId, UpdateOrderStatusDto dto)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                return false;
-
+            {
+                throw new Exception("Order not found.");
+            }
+            if (!IsValidStatus(dto.Status))
+            {
+                throw new Exception("Invalid order status.");
+            }
+            if (!CanChangeStatus(order.Status, dto.Status))
+            {
+                throw new Exception("Cannot change order status.");
+            }
             order.Status = dto.Status;
-
             await _repository.UpdateOrderAsync(order);
-
             return true;
+        }
+
+        private bool IsValidStatus(OrderStatus status)
+        {
+            return Enum.IsDefined(typeof(OrderStatus), status);
+        }
+
+        private bool CanChangeStatus(OrderStatus currentStatus, OrderStatus newStatus)
+        {
+            switch (currentStatus)
+            {
+                case OrderStatus.Pending:
+                    return newStatus == OrderStatus.Confirmed ||
+                           newStatus == OrderStatus.Cancelled;
+
+                case OrderStatus.Confirmed:
+                    return newStatus == OrderStatus.Preparing;
+
+                case OrderStatus.Preparing:
+                    return newStatus == OrderStatus.Delivering;
+
+                case OrderStatus.Delivering:
+                    return newStatus == OrderStatus.Completed;
+
+                case OrderStatus.Completed:
+                case OrderStatus.Cancelled:
+                    return false;
+
+                default:
+                    return false;
+            }
         }
     }
 }

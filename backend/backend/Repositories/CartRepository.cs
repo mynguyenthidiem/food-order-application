@@ -36,6 +36,7 @@ namespace backend.Repositories
         public async Task<Cart?> GetByUserAndFoodAsync(int userId, int foodId)
         {
             return await _context.Carts
+                .Include(c=>c.Food)
                 .FirstOrDefaultAsync(c =>
                     c.UserId == userId &&
                     c.FoodId == foodId);

@@ -17,8 +17,15 @@ namespace backend.Models
 
         [Required, StringLength(50)]
         public string PaymentMethod { get; set; } = string.Empty;
-        [Required, StringLength(30)]
-        public string Status { get; set; }
+        public PaymentStatus Status { get; set; } 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public enum PaymentStatus
+    {
+        Pending, 
+        Completed,   
+        Failed,      
+        Cancelled
     }
 }

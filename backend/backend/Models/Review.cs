@@ -14,10 +14,10 @@ namespace backend.Models
         [Required]
         public int UserId { get; set; }
         [ForeignKey(nameof(UserId))]
-        public User? User { get; set; }
+        public User User { get; set; } = null!;
         [Required]
         public int FoodId { get; set; }
         [ForeignKey(nameof(FoodId))]
-        public Food? Food { get; set; }
+        public Food Food { get; set; } = null!;
     }
 }

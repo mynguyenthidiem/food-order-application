@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using backend.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs.Order
 {

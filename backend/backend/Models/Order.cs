@@ -8,8 +8,7 @@ namespace backend.Models
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
-        [Required, StringLength(20)]
-        public string Status { get; set; }
+        public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
         [Required, Range(0.01, double.MaxValue), Column(TypeName ="decimal(10,2)")]
         public decimal TotalAmount { get; set; }
@@ -22,10 +21,21 @@ namespace backend.Models
         [Required]
         public int UserId { get; set; }
         [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; }
-    
-        public virtual Payment? Payment { get; set; }
+        public virtual User User { get; set; } = null!;
+
+        public virtual Payment Payment { get; set; } = null!;
 
         public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     }
+
+    public enum OrderStatus
+    {
+        Pending,
+        Confirmed,
+        Preparing,
+        Delivering,
+        Completed,
+        Cancelled
+    }
+
 }

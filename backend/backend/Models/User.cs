@@ -19,6 +19,8 @@ namespace backend.Models
 
         public string? Phone { get; set; }
 
+        public bool IsActive { get; set; } = true;
+
         [StringLength(20)]
         public string? Address { get; set; }
 
