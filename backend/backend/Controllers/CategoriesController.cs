@@ -42,7 +42,7 @@ namespace backend.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Create(CreateCategoryDto dto)
+        public async Task<IActionResult> Create([FromForm]CreateCategoryDto dto)
         {
             try
             {
@@ -57,7 +57,7 @@ namespace backend.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, UpdateCategoryDto dto)
+        public async Task<IActionResult> Update(int id,[FromForm] UpdateCategoryDto dto)
         {
             try
             {

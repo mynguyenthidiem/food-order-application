@@ -8,10 +8,11 @@ namespace backend.Services
     public class FoodService : IFoodService
     {
         private readonly IFoodRepository _repository;
-
-        public FoodService(IFoodRepository repository)
+        private readonly IFileStorageService _fileStorageService;
+        public FoodService(IFoodRepository repository, IFileStorageService fileStorageService)
         {
             _repository = repository;
+            _fileStorageService = fileStorageService;
         }
 
         public async Task<IEnumerable<FoodDto>> GetAllAsync()
@@ -48,16 +49,22 @@ namespace backend.Services
             {
                 throw new Exception("Category not found.");
             }
+
             var food = new Food
             {
                 Name = dto.Name,
                 Description = dto.Description,
                 Price = dto.Price,
-                Image = dto.Image,
                 Status = FoodStatus.Available,
                 CategoryId = dto.CategoryId,
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (dto.Image != null)
+            {
+                food.Image = await _fileStorageService.SaveImage(dto.Image, "foods");
+            }
+
             await _repository.CreateAsync(food);
             food = await _repository.GetByIdAsync(food.Id);
             return MapToDto(food!);
@@ -81,9 +88,16 @@ namespace backend.Services
             food.Name = dto.Name;
             food.Description = dto.Description;
             food.Price = dto.Price;
-            food.Image = dto.Image;
             food.Status = dto.Status;
             food.CategoryId = dto.CategoryId;
+
+            if (dto.Image != null)
+            {
+                await _fileStorageService.DeleteImage(food.Image);
+
+                food.Image = await _fileStorageService.SaveImage(dto.Image, "foods");
+            }
+
             await _repository.UpdateAsync(food);
             return true;
         }

@@ -47,7 +47,7 @@ namespace backend.Controllers
         }
 
         [HttpPut("profile/{id}")]
-        public async Task<IActionResult> UpdateProfile(int id, UpdateProfileDto dto)
+        public async Task<IActionResult> UpdateProfile(int id, [FromForm]UpdateProfileDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);

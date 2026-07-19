@@ -62,8 +62,11 @@ namespace backend.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Create(CreateFoodDto dto)
+        public async Task<IActionResult> Create([FromForm] CreateFoodDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 var food = await _service.CreateAsync(dto);
@@ -77,8 +80,11 @@ namespace backend.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, UpdateFoodDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] UpdateFoodDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 var result = await _service.UpdateAsync(id, dto);

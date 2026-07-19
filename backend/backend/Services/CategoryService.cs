@@ -8,10 +8,12 @@ namespace backend.Services
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _repository;
+        private readonly IFileStorageService _fileStorageService;
 
-        public CategoryService(ICategoryRepository repository)
+        public CategoryService(ICategoryRepository repository, IFileStorageService fileStorageService)
         {
             _repository = repository;
+            _fileStorageService = fileStorageService;
         }
 
         public async Task<IEnumerable<CategoryDto>> GetAllAsync()
@@ -47,9 +49,13 @@ namespace backend.Services
             var category = new Category
             {
                 Name = dto.Name,
-                Description = dto.Description,
-                Image = dto.Image
+                Description = dto.Description
             };
+
+            if (dto.Image != null)
+            {
+                category.Image = await _fileStorageService.SaveImage(dto.Image, "categories");
+            }
             await _repository.CreateAsync(category);
             return new CategoryDto
             {
@@ -69,7 +75,12 @@ namespace backend.Services
             }
             category.Name = dto.Name;
             category.Description = dto.Description;
-            category.Image = dto.Image;
+            if (dto.Image != null)
+            {
+                await _fileStorageService.DeleteImage(category.Image);
+
+                category.Image = await _fileStorageService.SaveImage(dto.Image, "categories");
+            }
             await _repository.UpdateAsync(category);
             return true;
         }
