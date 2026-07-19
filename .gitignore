@@ -1,15 +1,22 @@
 # Visual Studio
 .vs/
 
-# Build
-bin/
-obj/
+# Build output
+**/bin/
+**/obj/
 
 # User specific
 *.csproj.user
+*.suo
 
 # Rider
 .idea/
 
 # VS Code
 .vscode/
+
+# Environment
+appsettings.Development.json
+
+# Archives
+*.zip

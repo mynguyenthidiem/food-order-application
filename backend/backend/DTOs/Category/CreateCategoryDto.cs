@@ -10,8 +10,6 @@ namespace backend.DTOs.Category
 
         [StringLength(300)]
         public string? Description { get; set; }
-
-        [StringLength(300)]
-        public string? Image { get; set; }
+        public IFormFile? Image { get; set; }
     }
 }

@@ -9,10 +9,12 @@ namespace backend.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repo;
+        private readonly IFileStorageService _fileStorageService;
 
-        public UserService(IUserRepository repo)
+        public UserService(IUserRepository repo, IFileStorageService fileStorageService)
         {
             _repo = repo;
+            _fileStorageService = fileStorageService;
         }
 
         public async Task<UserResponseDto> GetById(int id, int currentUserId, bool isAdmin)
@@ -43,7 +45,14 @@ namespace backend.Services
             user.FullName = dto.FullName;
             user.Phone = dto.Phone;
             user.Address = dto.Address;
-            user.Avatar = dto.Avatar;
+
+            if (dto.Avatar != null)
+            {
+                await _fileStorageService.DeleteImage(user.Avatar);
+
+                user.Avatar = await _fileStorageService.SaveImage(dto.Avatar, "Users");
+            }
+
             await _repo.Update(user);
             return MapToDto(user);
         }

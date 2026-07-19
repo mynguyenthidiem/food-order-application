@@ -39,6 +39,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -142,6 +143,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
 app.UseAuthentication();
 
 app.UseAuthorization();

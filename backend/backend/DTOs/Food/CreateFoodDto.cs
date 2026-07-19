@@ -15,7 +15,7 @@ namespace backend.DTOs.Food
         [Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }
 
-        public string? Image { get; set; }
+        public IFormFile? Image { get; set; }
 
         [Required]
         public int CategoryId { get; set; }

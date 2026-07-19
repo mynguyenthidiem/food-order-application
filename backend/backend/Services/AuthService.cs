@@ -75,7 +75,7 @@ namespace backend.Services
             return new AuthResponseDto
             {
                 Success = true,
-                Message = "Đăng nhập thành công.",
+                Message = "Log in successful.",
                 Token = token,
                 User = MapUser(user)
             };
@@ -90,7 +90,7 @@ namespace backend.Services
             }
             if (!user.IsActive)
             {
-                throw new Exception("Tài khoản đã bị khóa.");
+                throw new Exception("Your account has been locked.");
             }
             return MapUser(user);
         }
