@@ -21,5 +21,6 @@ namespace backend.Repositories.Interfaces
         Task<bool> ExistsAsync(int id);
 
         Task<bool> CategoryExistsAsync(int categoryId);
+        Task<Category?> GetCategoryWithRestaurantAsync(int categoryId);
     }
 }

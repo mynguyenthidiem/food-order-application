@@ -11,12 +11,14 @@ namespace backend.Data
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<SystemCategory> SystemCategories { get; set; }
         public DbSet<Food> Foods { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderDetail> OrderDetails { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<Restaurant> Restaurants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,7 +78,18 @@ namespace backend.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Order>()
+                .HasOne(o => o.Restaurant)
+                .WithMany(r => r.Orders)
+                .HasForeignKey(o => o.RestaurantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            modelBuilder.Entity<Order>()
                 .Property(o => o.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Order>()
+                .Property(o => o.PaymentMethod)
                 .HasConversion<string>();
 
             // OrderDetail -> Order (cascade) / Food (restrict)
@@ -131,8 +144,47 @@ namespace backend.Data
                 .HasForeignKey(f => f.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Food>()
+                .HasOne(f => f.Restaurant)
+                .WithMany(r => r.Foods)
+                .HasForeignKey(f => f.RestaurantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Food>()
                 .Property(o => o.Status)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<Category>()
+                .HasOne(c => c.Restaurant)
+                .WithMany(r => r.Categories)
+                .HasForeignKey(c => c.RestaurantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Category -> SystemCategory
+            modelBuilder.Entity<Category>()
+                .HasOne(c => c.SystemCategory)
+                .WithMany(sc => sc.Categories)
+                .HasForeignKey(c => c.SystemCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Một nhà hàng không được thêm trùng 1 category hệ thống 2 lần
+            modelBuilder.Entity<Category>()
+                .HasIndex(c => new { c.RestaurantId, c.SystemCategoryId })
+                .IsUnique();
+
+            // System category name unique
+            modelBuilder.Entity<SystemCategory>()
+                .HasIndex(sc => sc.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<Cart>()
+                .HasOne(c => c.Restaurant)
+                .WithMany(r => r.Carts)
+                .HasForeignKey(c => c.RestaurantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Restaurant>()
+                .HasOne(r => r.Owner)
+                .WithMany(u => u.Restaurants)
+                .HasForeignKey(r => r.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

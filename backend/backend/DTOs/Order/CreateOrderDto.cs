@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using backend.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs.Order
 {
@@ -8,8 +9,7 @@ namespace backend.DTOs.Order
         [StringLength(300)]
         public string ShippingAddress { get; set; } = string.Empty;
 
-        [StringLength(50)]
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
 
         [Required, MinLength(1, ErrorMessage = "Please select at least one item.")]
         public List<int> CartIds { get; set; } = new List<int>();

@@ -36,9 +36,17 @@ namespace backend.Controllers
                 var cart = await _service.AddToCartAsync(GetCurrentUserId(), dto);
                 return Ok(cart);
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
             }
         }
 
@@ -54,9 +62,21 @@ namespace backend.Controllers
                 await _service.UpdateCartAsync(GetCurrentUserId(), id, dto);
                 return Ok(new { message = "Cart updated successfully." });
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception )
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -68,17 +88,33 @@ namespace backend.Controllers
                 await _service.DeleteCartAsync(GetCurrentUserId(), id);
                 return Ok(new { message = "Cart deleted successfully." });
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart()
         {
-            await _service.ClearCartAsync(GetCurrentUserId());
-            return Ok(new { message = "Cart cleared successfully." });
+            try
+            {
+                await _service.ClearCartAsync(GetCurrentUserId());
+
+                return Ok(new { message = "Cart cleared successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }

@@ -14,6 +14,8 @@ namespace backend.Repositories.Interfaces
 
         Task<Cart> AddAsync(Cart cart);
 
+        Task<Food?> GetFoodByIdAsync(int foodId);
+
         Task UpdateAsync(Cart cart);
 
         Task DeleteAsync(Cart cart);

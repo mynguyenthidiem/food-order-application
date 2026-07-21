@@ -21,6 +21,6 @@ namespace backend.DTOs.Food
         public FoodStatus Status { get; set; }
 
         [Required]
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
     }
 }

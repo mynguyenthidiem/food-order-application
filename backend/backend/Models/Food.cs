@@ -23,6 +23,11 @@ namespace backend.Models
         [ForeignKey(nameof(CategoryId))]
         public virtual Category Category { get; set; } = null!;
 
+        [Required]
+        public int RestaurantId { get; set; }
+        [ForeignKey(nameof(RestaurantId))]
+        public virtual Restaurant Restaurant { get; set; } = null!;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();

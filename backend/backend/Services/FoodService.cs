@@ -9,6 +9,7 @@ namespace backend.Services
     {
         private readonly IFoodRepository _repository;
         private readonly IFileStorageService _fileStorageService;
+
         public FoodService(IFoodRepository repository, IFileStorageService fileStorageService)
         {
             _repository = repository;
@@ -26,7 +27,7 @@ namespace backend.Services
             var food = await _repository.GetByIdAsync(id);
             if (food == null)
             {
-                throw new Exception("Food not found.");
+                throw new KeyNotFoundException("Food not found.");
             }
             return MapToDto(food);
         }
@@ -43,11 +44,18 @@ namespace backend.Services
             return foods.Select(MapToDto);
         }
 
-        public async Task<FoodDto> CreateAsync(CreateFoodDto dto)
+        public async Task<FoodDto> CreateAsync(int currentUserId, bool isAdmin, CreateFoodDto dto)
         {
-            if (!await _repository.CategoryExistsAsync(dto.CategoryId))
+            var category = await _repository.GetCategoryWithRestaurantAsync(dto.CategoryId);
+
+            if (category == null)
             {
-                throw new Exception("Category not found.");
+                throw new KeyNotFoundException("Category not found.");
+            }
+
+            if (!isAdmin && category.Restaurant?.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to create food in this restaurant.");
             }
 
             var food = new Food
@@ -57,6 +65,7 @@ namespace backend.Services
                 Price = dto.Price,
                 Status = FoodStatus.Available,
                 CategoryId = dto.CategoryId,
+                RestaurantId = category.RestaurantId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -66,52 +75,98 @@ namespace backend.Services
             }
 
             await _repository.CreateAsync(food);
+
             food = await _repository.GetByIdAsync(food.Id);
             return MapToDto(food!);
         }
 
-        public async Task<bool> UpdateAsync(int id, UpdateFoodDto dto)
+        public async Task UpdateAsync(int id, int currentUserId, bool isAdmin, UpdateFoodDto dto)
         {
             var food = await _repository.GetByIdAsync(id);
+
             if (food == null)
             {
-                throw new Exception("Food not found.");
+                throw new KeyNotFoundException("Food not found.");
             }
-            if (!await _repository.CategoryExistsAsync(dto.CategoryId))
+
+            // 1. Kiểm tra quyền sở hữu đối với nhà hàng hiện tại chứa món ăn
+            var category = await _repository.GetCategoryWithRestaurantAsync(food.CategoryId);
+
+            if (category == null)
             {
-                throw new Exception("Category not found.");
+                throw new KeyNotFoundException("Category not found.");
             }
+
+            if (!isAdmin && category.Restaurant?.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to manage this food.");
+            }
+
+            // 2. Chỉ kiểm tra & đổi Category/Restaurant nếu FE gửi CategoryId mới khác với CategoryId hiện tại
+            if (dto.CategoryId.HasValue && dto.CategoryId.Value != food.CategoryId)
+            {
+                var newCategoryId = dto.CategoryId.Value;
+                var newCategory = await _repository.GetCategoryWithRestaurantAsync(newCategoryId);
+
+                if (newCategory == null)
+                {
+                    throw new KeyNotFoundException("New category not found.");
+                }
+
+                if (!isAdmin && newCategory.Restaurant?.OwnerId != currentUserId)
+                {
+                    throw new UnauthorizedAccessException("Cannot move food to another owner's category.");
+                }
+
+                food.CategoryId = newCategoryId;
+                food.RestaurantId = newCategory.RestaurantId;
+            }
+
             if (!IsValidStatus(dto.Status))
             {
-                throw new Exception("Invalid status.");
+                throw new ArgumentException("Invalid status.");
             }
+
             food.Name = dto.Name;
             food.Description = dto.Description;
             food.Price = dto.Price;
             food.Status = dto.Status;
-            food.CategoryId = dto.CategoryId;
 
             if (dto.Image != null)
             {
-                await _fileStorageService.DeleteImage(food.Image);
+                if (!string.IsNullOrEmpty(food.Image))
+                {
+                    await _fileStorageService.DeleteImage(food.Image);
+                }
 
                 food.Image = await _fileStorageService.SaveImage(dto.Image, "foods");
             }
 
             await _repository.UpdateAsync(food);
-            return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task DeleteAsync(int id, int currentUserId, bool isAdmin)
         {
             var food = await _repository.GetByIdAsync(id);
             if (food == null)
             {
-                throw new Exception("Food not found.");
+                throw new KeyNotFoundException("Food not found.");
             }
+
+            var category = await _repository.GetCategoryWithRestaurantAsync(food.CategoryId);
+
+            if (category == null)
+            {
+                throw new KeyNotFoundException("Category not found.");
+            }
+
+            if (!isAdmin && category.Restaurant?.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to manage this food.");
+            }
+
             food.Status = FoodStatus.Unavailable;
             await _repository.UpdateAsync(food);
-            return true;
         }
 
         private static FoodDto MapToDto(Food food)
@@ -125,7 +180,7 @@ namespace backend.Services
                 Image = food.Image,
                 Status = food.Status,
                 CategoryId = food.CategoryId,
-                CategoryName = food.Category?.Name,
+                CategoryName = food.Category?.SystemCategory?.Name,
                 CreatedAt = food.CreatedAt
             };
         }

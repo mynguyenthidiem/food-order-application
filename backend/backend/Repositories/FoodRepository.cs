@@ -19,8 +19,13 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
-                .Where(f => f.Status != FoodStatus.Unavailable)
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .Where(f => f.Status == FoodStatus.Available
+                            && f.Category!.IsActive
+                            && f.Restaurant!.IsActive)
                 .OrderByDescending(f => f.CreatedAt)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -29,13 +34,12 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
-
-                // Load dữ liệu đang tham chiếu Food
-                .Include(f => f.OrderDetails)
-
-                .Include(f => f.Carts)
-
-                .FirstOrDefaultAsync(f => f.Id == id);
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .FirstOrDefaultAsync(f => f.Id == id
+                                        && f.Status == FoodStatus.Available
+                                        && f.Category!.IsActive
+                                        && f.Restaurant!.IsActive);
         }
 
         // GET: api/foods/category/{id}
@@ -43,23 +47,38 @@ namespace backend.Repositories
         {
             return await _context.Foods
                 .Include(f => f.Category)
-                .Where(f => f.CategoryId == categoryId && f.Status != FoodStatus.Unavailable)
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .Where(f => f.CategoryId == categoryId
+                        && f.Status == FoodStatus.Available
+                        && f.Category!.IsActive
+                        && f.Restaurant!.IsActive)
                 .OrderBy(f => f.Name)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
         // GET: api/foods/search?keyword=
         public async Task<IEnumerable<Food>> SearchAsync(string keyword)
         {
-            keyword = keyword.Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return Enumerable.Empty<Food>();
+            }
+
+            var searchTerm = keyword.Trim();
 
             return await _context.Foods
                 .Include(f => f.Category)
-                .Where(f => f.Status != FoodStatus.Unavailable && (
-                    f.Name.ToLower().Contains(keyword) ||
-                    (f.Description != null &&
-                     f.Description.ToLower().Contains(keyword))))
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .Where(f => f.Status == FoodStatus.Available
+                        && f.Category!.IsActive
+                        && f.Restaurant!.IsActive
+                        && (EF.Functions.Like(f.Name, $"%{searchTerm}%")
+                            || (f.Description != null && EF.Functions.Like(f.Description, $"%{searchTerm}%"))))
                 .OrderBy(f => f.Name)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -67,9 +86,7 @@ namespace backend.Repositories
         public async Task<Food> CreateAsync(Food food)
         {
             _context.Foods.Add(food);
-
             await _context.SaveChangesAsync();
-
             return food;
         }
 
@@ -77,7 +94,6 @@ namespace backend.Repositories
         public async Task UpdateAsync(Food food)
         {
             _context.Foods.Update(food);
-
             await _context.SaveChangesAsync();
         }
 
@@ -85,23 +101,31 @@ namespace backend.Repositories
         public async Task DeleteAsync(Food food)
         {
             food.Status = FoodStatus.Unavailable;
-
             await _context.SaveChangesAsync();
         }
 
         public async Task<bool> ExistsAsync(int id)
         {
             return await _context.Foods
-                .AnyAsync(f => f.Id == id);
+                .AnyAsync(f => f.Id == id
+                            && f.Status == FoodStatus.Available
+                            && f.Category!.IsActive
+                            && f.Restaurant!.IsActive);
         }
 
         public async Task<bool> CategoryExistsAsync(int categoryId)
         {
             return await _context.Categories
-                .AnyAsync(c =>
-                    c.Id == categoryId
-                    &&
-                    c.IsActive);
+                .AnyAsync(c => c.Id == categoryId
+                            && c.IsActive
+                            && c.Restaurant!.IsActive);
+        }
+
+        public async Task<Category?> GetCategoryWithRestaurantAsync(int categoryId)
+        {
+            return await _context.Categories
+                .Include(c => c.Restaurant)
+                .FirstOrDefaultAsync(c => c.Id == categoryId && c.IsActive && c.Restaurant!.IsActive);
         }
     }
 }

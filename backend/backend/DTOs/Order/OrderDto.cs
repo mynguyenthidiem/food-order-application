@@ -12,7 +12,9 @@ namespace backend.DTOs.Order
 
         public decimal TotalAmount { get; set; }
 
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+
+        public PaymentResponseDto? Payment { get; set; }
 
         public string ShippingAddress { get; set; } = string.Empty;
 

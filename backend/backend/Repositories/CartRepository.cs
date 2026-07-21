@@ -19,7 +19,13 @@ namespace backend.Repositories
         {
             return await _context.Carts
                 .Include(c => c.Food)
-                .Where(c => c.UserId == userId)
+                    .ThenInclude(f=>f.Restaurant)
+                .Include(c=>c.Food)
+                    .ThenInclude(f=>f.Category)
+                .Where(c => c.UserId == userId 
+                    && c.Food.Status==FoodStatus.Available
+                    && c.Food.Restaurant.IsActive
+                    && c.Food.Category.IsActive)
                 .OrderByDescending(c => c.AddedAt)
                 .ToListAsync();
         }
@@ -29,6 +35,9 @@ namespace backend.Repositories
         {
             return await _context.Carts
                 .Include(c => c.Food)
+                    .ThenInclude(f=>f.Restaurant)
+                .Include(c=>c.Food)
+                    .ThenInclude(f=>f.Category)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -46,7 +55,22 @@ namespace backend.Repositories
         public async Task<bool> FoodExistsAsync(int foodId)
         {
             return await _context.Foods
-                .AnyAsync(f => f.Id == foodId);
+                .Include(f=>f.Restaurant)
+                .Include(f=>f.Category)
+                .AnyAsync(f => f.Id == foodId
+                            && f.Status == FoodStatus.Available
+                            && f.Restaurant.IsActive
+                            && f.Category.IsActive);
+        }
+        public async Task<Food?> GetFoodByIdAsync(int foodId)
+        {
+            return await _context.Foods
+                .Include(f=>f.Restaurant)
+                .Include(f=>f.Category)
+                .FirstOrDefaultAsync(f => f.Id == foodId
+                                        && f.Status == FoodStatus.Available
+                                        && f.Restaurant.IsActive
+                                        && f.Category.IsActive);
         }
 
         // Thêm vào Cart

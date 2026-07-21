@@ -17,15 +17,20 @@ namespace backend.Repositories
         public async Task<IEnumerable<Category>> GetAllAsync()
         {
             return await _context.Categories
+                .Include(c => c.Restaurant)
+                .Include(c => c.SystemCategory)
                 .Where(c => c.IsActive)
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.SystemCategory.Name)
                 .ToListAsync();
         }
 
         public async Task<Category?> GetByIdAsync(int id)
         {
             return await _context.Categories
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .Include(c => c.Restaurant)
+                .Include(c => c.SystemCategory)
+                .Include(c => c.Foods.Where(f => f.Status == FoodStatus.Available))
+                .FirstOrDefaultAsync(x => x.Id == id && x.IsActive && x.Restaurant.IsActive);
         }
 
         public async Task<Category> CreateAsync(Category category)
@@ -53,7 +58,35 @@ namespace backend.Repositories
 
         public async Task<bool> ExistsAsync(int id)
         {
-            return await _context.Categories.AnyAsync(x => x.Id == id);
+            return await _context.Categories.Include(c => c.Restaurant).AnyAsync(x => x.Id == id && x.IsActive && x.Restaurant.IsActive);
+        }
+
+        public async Task<Category?> GetWithRestaurantAsync(int id)
+        {
+            return await _context.Categories
+                .Include(c => c.Restaurant)
+                .Include(c => c.SystemCategory)
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsActive && c.Restaurant.IsActive);
+        }
+
+        public async Task<Restaurant?> GetRestaurantAsync(int restaurantId)
+        {
+            return await _context.Restaurants.FirstOrDefaultAsync(r => r.Id == restaurantId && r.IsActive);
+        }
+
+        public async Task<SystemCategory?> GetSystemCategoryAsync(int systemCategoryId)
+        {
+            return await _context.SystemCategories
+                .FirstOrDefaultAsync(sc => sc.Id == systemCategoryId && sc.IsActive);
+        }
+
+        public async Task<bool> ExistsByRestaurantAndSystemCategoryAsync(int restaurantId, int systemCategoryId, int? excludeCategoryId = null)
+        {
+            return await _context.Categories.AnyAsync(c =>
+                c.RestaurantId == restaurantId &&
+                c.SystemCategoryId == systemCategoryId &&
+                c.IsActive &&
+                (excludeCategoryId == null || c.Id != excludeCategoryId));
         }
     }
 }

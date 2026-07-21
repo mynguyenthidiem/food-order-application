@@ -1,9 +1,8 @@
 ﻿using backend.DTOs.Category;
 using backend.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 namespace backend.Controllers
 {
     [Authorize]
@@ -12,7 +11,15 @@ namespace backend.Controllers
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryService _service;
+        private int GetCurrentUserId()
+        {
+            return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        }
 
+        private bool IsAdmin()
+        {
+            return User.IsInRole("Admin");
+        }
         public CategoriesController(ICategoryService service)
         {
             _service = service;
@@ -34,62 +41,78 @@ namespace backend.Controllers
                 var category = await _service.GetByIdAsync(id);
                 return Ok(category);
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = "Admin, Owner")]
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
+        {
+            try
+            {
+                var result = await _service.CreateAsync(GetCurrentUserId(), IsAdmin(), dto);
+                return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+            }
+            catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPost]
-        public async Task<IActionResult> Create([FromForm]CreateCategoryDto dto)
-        {
-            try
+            catch (Exception)
             {
-                var result = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
-            }
-            catch (DbUpdateException)
-            {
-                return Conflict(new { message = "Category name already exists." });
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, Owner")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id,[FromForm] UpdateCategoryDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateCategoryDto dto)
         {
             try
             {
-                var success = await _service.UpdateAsync(id, dto);
-                if (!success)
-                {
-                    return NotFound();
-                }
+                await _service.UpdateAsync(id, GetCurrentUserId(), IsAdmin(), dto);
+
                 return NoContent();
             }
-            catch (DbUpdateException)
+            catch (KeyNotFoundException ex)
             {
-                return Conflict(new { message = "Category name already exists." });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, Owner" +
+            "" +
+            "")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             try
             {
-                var success = await _service.DeleteAsync(id);
-                if (!success)
-                {
-                    return NotFound(new { message = "Category not found." });
-                }
+                await _service.DeleteAsync(id, GetCurrentUserId(), IsAdmin());
+
                 return Ok(new { message = "Category hidden successfully." });
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

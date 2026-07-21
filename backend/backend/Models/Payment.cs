@@ -14,7 +14,10 @@ namespace backend.Models
         public virtual Order? Order { get; set; }
         [Required, Column(TypeName = "decimal(10,2)"), Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; }
-        public PaymentStatus Status { get; set; } 
+        public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+        public PaymentMethod Method { get; set; }
+        [StringLength(100)]
+        public string? TransactionId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
