@@ -2,7 +2,6 @@
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace backend.Controllers
@@ -29,16 +28,19 @@ namespace backend.Controllers
             {
                 var result = await _service.Register(dto);
 
-                if (result == null)
-                {
-                    return BadRequest(new { message = "Email has already been taken." });
-                }
-
                 return StatusCode(StatusCodes.Status201Created, result);
             }
-            catch (DbUpdateException)
+            catch (InvalidOperationException ex)
             {
-                return Conflict(new { message = "Email has already been taken." });
+                return Conflict(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -53,16 +55,19 @@ namespace backend.Controllers
             {
                 var result = await _service.Login(dto);
 
-                if (result == null)
-                {
-                    return Unauthorized(new { message = "Email or password is incorrect." });
-                }
-
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -73,16 +78,22 @@ namespace backend.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
                 var user = await _service.GetProfile(userId);
-                if (user == null)
-                {
-                    return NotFound(new { message = "User not found." });
-                }
+
                 return Ok(user);
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -98,15 +109,19 @@ namespace backend.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 var result = await _service.ChangePassword(userId, dto);
-                if (!result)
-                {
-                    return BadRequest(new { message = "Old password is incorrect." });
-                }
                 return Ok(new { message = "Password changed successfully." });
             }
-            catch (Exception ex)
+            catch(KeyNotFoundException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch(InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

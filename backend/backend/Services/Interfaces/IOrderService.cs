@@ -1,4 +1,5 @@
 ﻿using backend.DTOs.Order;
+using backend.Models;
 
 namespace backend.Services.Interfaces
 {
@@ -10,10 +11,14 @@ namespace backend.Services.Interfaces
 
         Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto dto);
 
-        Task<bool> UpdateOrderAsync(int userId, int orderId, UpdateOrderDto dto);
+        Task UpdateOrderAsync(int userId, int orderId, UpdateOrderDto dto);
 
-        Task<bool> DeleteOrderAsync(int userId, int orderId);
+        Task DeleteOrderAsync(int userId, int orderId);
 
-        Task<bool> UpdateOrderStatusAsync(int orderId, UpdateOrderStatusDto dto);
+        Task UpdateOrderStatusAsync(int orderId, int currentUserId, bool isAdmin, UpdateOrderStatusDto dto);
+
+        Task<IEnumerable<OrderDto>> GetRestaurantOrdersAsync(int ownerId);
+
+        Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
     }
 }

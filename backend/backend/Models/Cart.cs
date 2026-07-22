@@ -23,6 +23,12 @@ namespace backend.Models
         [ForeignKey(nameof(FoodId))]
         public virtual Food Food { get; set; } = null!;
 
+        public int RestaurantId { get; set; }
+
+
+        [ForeignKey(nameof(RestaurantId))]
+        public virtual Restaurant Restaurant { get; set; } = null!;
+
         public DateTime AddedAt { get; set; } = DateTime.UtcNow;
     }
 }

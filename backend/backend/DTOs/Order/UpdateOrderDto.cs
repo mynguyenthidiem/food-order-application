@@ -10,6 +10,6 @@ namespace backend.DTOs.Order
         public string ShippingAddress { get; set; } = string.Empty;
 
         [StringLength(50)]
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
     }
 }

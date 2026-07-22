@@ -13,38 +13,42 @@ namespace backend.Repositories
         {
             _context = context;
         }
-
         public async Task<List<Review>> GetByFoodId(int foodId)
         {
             return await _context.Reviews
                 .Include(r => r.User)
-                .Where(r => r.FoodId == foodId)
+                .Where(r => r.FoodId == foodId && r.User.IsActive)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
+
         public async Task<Review?> GetById(int id)
         {
             return await _context.Reviews
                 .Include(r => r.User)
-                .FirstOrDefaultAsync(r => r.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id && r.User.IsActive);
         }
         public async Task<Food?> GetFoodById(int foodId)
         {
-            return await _context.Foods.FirstOrDefaultAsync(f => f.Id == foodId);
+            return await _context.Foods
+                .Include(f => f.Category)
+                .Include(f => f.Restaurant)
+                .FirstOrDefaultAsync(f => f.Id == foodId
+                                       && f.Status == FoodStatus.Available
+                                       && f.Category.IsActive
+                                       && f.Restaurant.IsActive);
         }
-
         public async Task<Review?> GetByUserAndFood(int userId, int foodId)
         {
-            return await _context.Reviews.FirstOrDefaultAsync(r => r.UserId == userId && r.FoodId == foodId);
+            return await _context.Reviews
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.FoodId == foodId);
         }
         public async Task<bool> HasUserPurchasedFood(int userId, int foodId)
         {
             return await _context.OrderDetails
-                .AnyAsync(od =>
-                    od.FoodId == foodId &&
-                    od.Order.UserId == userId &&
-                    od.Order.Status == OrderStatus.Completed
-                );
+                .AnyAsync(od => od.FoodId == foodId &&
+                                od.Order.UserId == userId &&
+                                od.Order.Status == OrderStatus.Completed);
         }
 
         public async Task<Review> Create(Review review)

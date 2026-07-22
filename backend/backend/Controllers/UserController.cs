@@ -44,10 +44,14 @@ namespace backend.Controllers
             {
                 return Forbid();
             }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpPut("profile/{id}")]
-        public async Task<IActionResult> UpdateProfile(int id, UpdateProfileDto dto)
+        public async Task<IActionResult> UpdateProfile(int id, [FromForm] UpdateProfileDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -63,6 +67,10 @@ namespace backend.Controllers
             catch (UnauthorizedAccessException)
             {
                 return Forbid();
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -85,7 +93,7 @@ namespace backend.Controllers
                     return BadRequest(new { message = "Cannot disable the currently logged-in account." });
                 }
                 await _service.Delete(id);
-                return Ok(new { message = "User disabled successfully." });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -93,7 +101,38 @@ namespace backend.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("create-owner")]
+        public async Task<IActionResult> CreateOwner(CreateOwnerDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var result = await _service.CreateOwner(dto);
+                return StatusCode(StatusCodes.Status201Created, result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

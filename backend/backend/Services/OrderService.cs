@@ -8,10 +8,12 @@ namespace backend.Services
     public class OrderService : IOrderService
     {
         private readonly IOrderRepository _repository;
+        private readonly IPaymentService _paymentService;
 
-        public OrderService(IOrderRepository repository)
+        public OrderService(IOrderRepository repository, IPaymentService paymentService)
         {
             _repository = repository;
+            _paymentService = paymentService;
         }
 
         public async Task<IEnumerable<OrderDto>> GetOrdersAsync(int userId)
@@ -20,15 +22,15 @@ namespace backend.Services
             return orders.Select(MapToDto);
         }
 
-        public async Task<OrderDto> GetOrderByIdAsync(int userId, int orderId)
+        public async Task<OrderDto?> GetOrderByIdAsync(int userId, int orderId)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                throw new Exception("Order not found.");
+                throw new KeyNotFoundException("Order not found.");
 
             if (order.UserId != userId)
-                throw new Exception("You are not allowed to view this order.");
+                throw new UnauthorizedAccessException("You are not allowed to view this order.");
 
             return MapToDto(order);
         }
@@ -43,6 +45,16 @@ namespace backend.Services
                 TotalAmount = order.TotalAmount,
                 PaymentMethod = order.PaymentMethod,
                 ShippingAddress = order.ShippingAddress,
+
+                Payment = order.Payment == null ? null : new PaymentResponseDto
+                {
+                    Id = order.Payment.Id,
+                    OrderId = order.Payment.OrderId,
+                    Amount = order.Payment.Amount,
+                    Status = order.Payment.Status,
+                    TransactionId = order.Payment.TransactionId,
+                    CreatedAt = order.Payment.CreatedAt
+                },
 
                 OrderDetails = order.OrderDetails.Select(d => new OrderDetailDto
                 {
@@ -63,11 +75,17 @@ namespace backend.Services
             {
                 var carts = (await _repository.GetSelectedCartAsync(userId, dto.CartIds)).ToList();
                 if (!carts.Any())
-                    throw new Exception("Cart is empty.");
+                    throw new InvalidOperationException("Cart is empty.");
+
+                var firstCart = carts.First();
+                int restaurantId = firstCart.Food?.RestaurantId
+                                   ?? firstCart.Food?.Category?.RestaurantId
+                                   ?? throw new InvalidOperationException("Invalid restaurant data in cart.");
 
                 var order = new Order
                 {
                     UserId = userId,
+                    RestaurantId = restaurantId,
                     OrderDate = DateTime.UtcNow,
                     Status = OrderStatus.Pending,
                     ShippingAddress = dto.ShippingAddress,
@@ -76,15 +94,19 @@ namespace backend.Services
                 };
 
                 await _repository.CreateOrderAsync(order);
-
-                // Lưu Order trước để lấy Order.Id
                 await _repository.SaveChangesAsync();
 
                 decimal totalAmount = 0;
 
                 foreach (var cart in carts)
                 {
-                    decimal price = cart.Food!.Price;
+                    if (cart.Food == null || cart.Food.Status != FoodStatus.Available)
+                    {
+                        throw new InvalidOperationException(
+                            $"Món ăn '{cart.Food?.Name ?? "đã chọn"}' hiện đã ngưng phục vụ. Vui lòng bỏ món này khỏi giỏ hàng.");
+                    }
+
+                    decimal price = cart.Food.Price;
                     decimal subTotal = price * cart.Quantity;
 
                     totalAmount += subTotal;
@@ -104,8 +126,9 @@ namespace backend.Services
                 order.TotalAmount = totalAmount;
 
                 await _repository.ClearSelectedCartAsync(userId, dto.CartIds);
-
                 await _repository.SaveChangesAsync();
+
+                await _paymentService.CreatePayment(order.Id, order.TotalAmount, dto.PaymentMethod);
 
                 await transaction.CommitAsync();
 
@@ -123,28 +146,30 @@ namespace backend.Services
             }
         }
 
-        public async Task<bool> UpdateOrderAsync(int userId, int orderId, UpdateOrderDto dto)
+        public async Task UpdateOrderAsync(int userId, int orderId, UpdateOrderDto dto)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                throw new Exception("Order not found.");
+                throw new KeyNotFoundException("Order not found.");
 
             if (order.UserId != userId)
-                throw new Exception("You are not allowed to update this order.");
+                throw new UnauthorizedAccessException("You are not allowed to update this order.");
 
             if (order.Status != OrderStatus.Pending)
-                throw new Exception("Only pending orders can be updated.");
+                throw new InvalidOperationException("Only pending orders can be updated.");
 
             order.ShippingAddress = dto.ShippingAddress;
-            order.PaymentMethod = dto.PaymentMethod;
+            if (order.Payment != null
+               && order.Payment.Status == PaymentStatus.Pending)
+            {
+                order.Payment.Method = dto.PaymentMethod;
+            }
 
             await _repository.UpdateOrderAsync(order);
-
-            return true;
         }
 
-        public async Task<bool> DeleteOrderAsync(int userId, int orderId)
+        public async Task DeleteOrderAsync(int userId, int orderId)
         {
             var order = await _repository.GetByIdAsync(orderId);
 
@@ -154,30 +179,61 @@ namespace backend.Services
             if (order.UserId != userId)
                 throw new Exception("You are not allowed to delete this order.");
 
-            await _repository.DeleteOrderAsync(order);
+            if (order.Status != OrderStatus.Pending)
+            {
+                throw new InvalidOperationException("Only pending orders can be cancelled.");
+            }
 
-            return true;
+            await _repository.DeleteOrderAsync(order);
         }
 
-        public async Task<bool> UpdateOrderStatusAsync(int orderId, UpdateOrderStatusDto dto)
+        public async Task UpdateOrderStatusAsync(int orderId, int currentUserId, bool isAdmin, UpdateOrderStatusDto dto)
         {
-            var order = await _repository.GetByIdAsync(orderId);
+            var order = await _repository.GetByIdWithRestaurantAsync(orderId);
 
             if (order == null)
             {
-                throw new Exception("Order not found.");
+                throw new KeyNotFoundException("Order not found.");
             }
+
+            var restaurant = order.Restaurant;
+            if (restaurant == null)
+            {
+                throw new InvalidOperationException("Restaurant info associated with this order could not be loaded.");
+            }
+
+            if (!isAdmin && restaurant.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to manage this order.");
+            }
+
             if (!IsValidStatus(dto.Status))
             {
-                throw new Exception("Invalid order status.");
+                throw new ArgumentException("Invalid order status.");
             }
+
             if (!CanChangeStatus(order.Status, dto.Status))
             {
-                throw new Exception("Cannot change order status.");
+                throw new InvalidOperationException("Cannot change order status.");
             }
+
             order.Status = dto.Status;
+
             await _repository.UpdateOrderAsync(order);
-            return true;
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetRestaurantOrdersAsync(int ownerId)
+        {
+            var orders = await _repository.GetRestaurantOrdersAsync(ownerId);
+
+            return orders.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync()
+        {
+            var orders = await _repository.GetAllOrdersAsync();
+
+            return orders.Select(MapToDto);
         }
 
         private bool IsValidStatus(OrderStatus status)

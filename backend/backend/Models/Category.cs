@@ -8,15 +8,17 @@ namespace backend.Models
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required, StringLength(200)]
-        public string Name { get; set; } = string.Empty;
-
-        [StringLength(300)]
-        public string? Description { get; set; }
-
         public bool IsActive { get; set; } = true;
-        [StringLength(300)]
-        public string? Image { get; set; }
+
+        public int RestaurantId { get; set; }
+
+        [ForeignKey(nameof(RestaurantId))]
+        public virtual Restaurant Restaurant { get; set; } = null!;
+
+        public int SystemCategoryId { get; set; }
+
+        [ForeignKey(nameof(SystemCategoryId))]
+        public virtual SystemCategory SystemCategory { get; set; } = null!;
 
         public virtual ICollection<Food> Foods { get; set; } = new List<Food>();
     }

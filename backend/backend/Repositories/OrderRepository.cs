@@ -18,6 +18,7 @@ namespace backend.Repositories
         public async Task<IEnumerable<Order>> GetUserOrdersAsync(int userId)
         {
             return await _context.Orders
+                .Include(o => o.Restaurant)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(d => d.Food)
                 .Where(o => o.UserId == userId)
@@ -29,16 +30,21 @@ namespace backend.Repositories
         {
             return await _context.Carts
                 .Include(c => c.Food)
-                .Where(c => c.UserId == userId &&
-                            cartIds.Contains(c.Id))
+                    .ThenInclude(f => f.Restaurant)
+                .Include(c => c.Food)
+                    .ThenInclude(f => f.Category)
+                .Where(c => c.UserId == userId
+                         && cartIds.Contains(c.Id)
+                         && c.Food.Status == FoodStatus.Available
+                         && c.Food.Restaurant.IsActive
+                         && c.Food.Category.IsActive)
                 .ToListAsync();
         }
 
         public async Task ClearSelectedCartAsync(int userId, List<int> cartIds)
         {
             var carts = await _context.Carts
-                .Where(c => c.UserId == userId &&
-                            cartIds.Contains(c.Id))
+                .Where(c => c.UserId == userId && cartIds.Contains(c.Id))
                 .ToListAsync();
 
             _context.Carts.RemoveRange(carts);
@@ -47,6 +53,7 @@ namespace backend.Repositories
         public async Task<Order?> GetByIdAsync(int id)
         {
             return await _context.Orders
+                .Include(o => o.Restaurant)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(d => d.Food)
                 .FirstOrDefaultAsync(o => o.Id == id);
@@ -68,8 +75,8 @@ namespace backend.Repositories
 
         public async Task DeleteOrderAsync(Order order)
         {
-            _context.Orders.Remove(order);
-
+            order.Status = OrderStatus.Cancelled;
+            _context.Orders.Update(order);
             await _context.SaveChangesAsync();
         }
 
@@ -84,7 +91,7 @@ namespace backend.Repositories
         {
             return await _context.Carts
                 .Include(c => c.Food)
-                .Where(c => c.UserId == userId)
+                .Where(c => c.UserId == userId && c.Food.Status == FoodStatus.Available)
                 .ToListAsync();
         }
 
@@ -105,6 +112,40 @@ namespace backend.Repositories
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {
             return await _context.Database.BeginTransactionAsync();
+        }
+
+        public async Task<Order?> GetByIdWithRestaurantAsync(int id)
+        {
+            return await _context.Orders
+               .Include(o => o.Restaurant)
+               .Include(o => o.Payment)
+               .Include(o => o.OrderDetails)
+                    .ThenInclude(d => d.Food)
+               .FirstOrDefaultAsync(o => o.Id == id);
+        }
+
+        public async Task<IEnumerable<Order>> GetRestaurantOrdersAsync(int ownerId)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Food)
+                .Include(o => o.Payment)
+                .Include(o => o.Restaurant)
+                .Where(o => o.Restaurant!.OwnerId == ownerId)
+                .OrderByDescending(o => o.OrderDate)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Order>> GetAllOrdersAsync()
+        {
+            return await _context.Orders
+                .Include(o => o.Payment)
+                .Include(o => o.Restaurant)
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(d => d.Food)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
         }
     }
 }

@@ -24,5 +24,10 @@ namespace backend.Repositories.Interfaces
         // Transaction
         Task SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();
+
+        Task<Order?> GetByIdWithRestaurantAsync(int id);
+        Task<IEnumerable<Order>> GetRestaurantOrdersAsync(int ownerId);
+
+        Task<IEnumerable<Order>> GetAllOrdersAsync();
     }
 }

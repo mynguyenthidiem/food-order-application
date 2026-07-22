@@ -8,6 +8,7 @@ namespace backend.Repositories
     public class UserRepository : IUserRepository
     {
         private readonly AppDbContext _context;
+
         public UserRepository(AppDbContext context)
         {
             _context = context;
@@ -15,31 +16,41 @@ namespace backend.Repositories
 
         public async Task<List<User>> GetAll()
         {
-            return await _context.Users.Where(u => u.IsActive).Include(u => u.UserRoles).ThenInclude(ur => ur.Role).ToListAsync();
+            return await _context.Users
+                .Where(u => u.IsActive)
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .ToListAsync();
         }
 
         public async Task<User?> GetById(int id)
         {
-            return await _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
-        }
-
-        public async Task<User?> GetByEmail(string email)
-        {
             return await _context.Users
                 .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower() && u.IsActive);
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
+        }
+        public async Task<User?> GetByEmail(string email)
+        {
+            var normalizedEmail = email.Trim().ToLower();
+
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.IsActive);
         }
 
         public async Task<bool> ExistsEmail(string email)
         {
-            email = email.ToLower();
+            var normalizedEmail = email.Trim().ToLower();
+
             return await _context.Users
-                .AnyAsync(u => u.Email.ToLower() == email);
+                .AnyAsync(u => u.Email == normalizedEmail && u.IsActive);
         }
+
         public async Task<User> Create(User user)
         {
-            _context.Users.Add(user);
+            user.Email = user.Email.Trim().ToLower();
             await _context.SaveChangesAsync();
             return user;
         }
@@ -62,7 +73,8 @@ namespace backend.Repositories
 
         public async Task<Role?> GetRoleByName(string roleName)
         {
-            return await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+            return await _context.Roles
+                .FirstOrDefaultAsync(r => r.Name == roleName);
         }
 
         public async Task CreateUserRole(UserRole userRole)

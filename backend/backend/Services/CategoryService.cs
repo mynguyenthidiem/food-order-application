@@ -17,13 +17,7 @@ namespace backend.Services
         public async Task<IEnumerable<CategoryDto>> GetAllAsync()
         {
             var categories = await _repository.GetAllAsync();
-            return categories.Select(c => new CategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description,
-                Image = c.Image
-            });
+            return categories.Select(MapToDto);
         }
 
         public async Task<CategoryDto?> GetByIdAsync(int id)
@@ -31,59 +25,114 @@ namespace backend.Services
             var category = await _repository.GetByIdAsync(id);
             if (category == null)
             {
-                throw new Exception("Category not found.");
+                throw new KeyNotFoundException("Category not found.");
             }
-            return new CategoryDto
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Description = category.Description,
-                Image = category.Image
-            };
+            return MapToDto(category);
         }
 
-        public async Task<CategoryDto> CreateAsync(CreateCategoryDto dto)
+        public async Task<CategoryDto> CreateAsync(int currentUserId, bool isAdmin, CreateCategoryDto dto)
         {
+            var restaurant = await _repository.GetRestaurantAsync(dto.RestaurantId);
+
+            if (restaurant == null)
+                throw new KeyNotFoundException("Restaurant not found.");
+
+            if (!isAdmin &&
+                restaurant.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not allowed to manage this restaurant.");
+            }
+
+            var systemCategory = await _repository.GetSystemCategoryAsync(dto.SystemCategoryId);
+            if (systemCategory == null)
+            {
+                throw new KeyNotFoundException("System category not found.");
+            }
+
+            if (await _repository.ExistsByRestaurantAndSystemCategoryAsync(dto.RestaurantId, dto.SystemCategoryId))
+            {
+                throw new ArgumentException("This restaurant has already added this category.");
+            }
+
             var category = new Category
             {
-                Name = dto.Name,
-                Description = dto.Description,
-                Image = dto.Image
+                RestaurantId = dto.RestaurantId,
+                SystemCategoryId = dto.SystemCategoryId
             };
+
             await _repository.CreateAsync(category);
+
+            // Nạp lại SystemCategory để map DTO trả về đầy đủ Name/Description/Image
+            category.SystemCategory = systemCategory;
+            return MapToDto(category);
+        }
+
+        public async Task UpdateAsync(int id, int currentUserId, bool isAdmin, UpdateCategoryDto dto)
+        {
+            var category = await _repository.GetByIdAsync(id);
+            if (category == null)
+            {
+                throw new KeyNotFoundException("Category not found.");
+            }
+            if (category.Restaurant == null)
+            {
+                throw new KeyNotFoundException("Restaurant not found.");
+            }
+
+            if (!isAdmin && category.Restaurant.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to manage this category.");
+            }
+
+            var systemCategory = await _repository.GetSystemCategoryAsync(dto.SystemCategoryId);
+            if (systemCategory == null)
+            {
+                throw new KeyNotFoundException("System category not found.");
+            }
+
+            if (await _repository.ExistsByRestaurantAndSystemCategoryAsync(category.RestaurantId, dto.SystemCategoryId, category.Id))
+            {
+                throw new ArgumentException("This restaurant has already added this category.");
+            }
+
+            category.SystemCategoryId = dto.SystemCategoryId;
+            await _repository.UpdateAsync(category);
+        }
+
+        public async Task DeleteAsync(int id, int currentUserId, bool isAdmin)
+        {
+            var category = await _repository.GetByIdAsync(id);
+            if (category == null)
+            {
+                throw new KeyNotFoundException("Category not found.");
+            }
+
+            if (category.Restaurant == null)
+            {
+                throw new KeyNotFoundException("Restaurant not found.");
+            }
+
+            if (!isAdmin && category.Restaurant.OwnerId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You are not allowed to manage this category.");
+            }
+
+            category.IsActive = false;
+            await _repository.UpdateAsync(category);
+        }
+
+        private static CategoryDto MapToDto(Category category)
+        {
             return new CategoryDto
             {
                 Id = category.Id,
-                Name = category.Name,
-                Description = category.Description,
-                Image = category.Image
+                RestaurantId = category.RestaurantId,
+                SystemCategoryId = category.SystemCategoryId,
+                Name = category.SystemCategory?.Name ?? string.Empty,
+                Description = category.SystemCategory?.Description,
+                Image = category.SystemCategory?.Image
             };
-        }
-
-        public async Task<bool> UpdateAsync(int id, UpdateCategoryDto dto)
-        {
-            var category = await _repository.GetByIdAsync(id);
-            if (category == null)
-            {
-                throw new Exception("Category not found.");
-            }
-            category.Name = dto.Name;
-            category.Description = dto.Description;
-            category.Image = dto.Image;
-            await _repository.UpdateAsync(category);
-            return true;
-        }
-
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var category = await _repository.GetByIdAsync(id);
-            if (category == null)
-            {
-                throw new Exception("Category not found.");
-            }
-            category.IsActive = false;
-            await _repository.UpdateAsync(category);
-            return true;
         }
     }
 }

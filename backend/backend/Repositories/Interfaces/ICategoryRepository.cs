@@ -15,5 +15,13 @@ namespace backend.Repositories.Interfaces
         Task DeleteAsync(Category category);
 
         Task<bool> ExistsAsync(int id);
+
+        Task<Category?> GetWithRestaurantAsync(int id);
+
+        Task<Restaurant?> GetRestaurantAsync(int restaurantId);
+
+        Task<SystemCategory?> GetSystemCategoryAsync(int systemCategoryId);
+
+        Task<bool> ExistsByRestaurantAndSystemCategoryAsync(int restaurantId, int systemCategoryId, int? excludeCategoryId = null);
     }
 }

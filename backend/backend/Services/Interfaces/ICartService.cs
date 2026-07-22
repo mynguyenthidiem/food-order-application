@@ -8,9 +8,9 @@ namespace backend.Services.Interfaces
 
         Task<CartDto> AddToCartAsync(int userId, AddCartDto dto);
 
-        Task<bool> UpdateCartAsync(int userId, int cartId, UpdateCartDto dto);
+        Task UpdateCartAsync(int userId, int cartId, UpdateCartDto dto);
 
-        Task<bool> DeleteCartAsync(int userId, int cartId);
+        Task DeleteCartAsync(int userId, int cartId);
 
         Task ClearCartAsync(int userId);
     }

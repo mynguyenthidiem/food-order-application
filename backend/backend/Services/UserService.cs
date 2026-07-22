@@ -9,10 +9,12 @@ namespace backend.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repo;
+        private readonly IFileStorageService _fileStorageService;
 
-        public UserService(IUserRepository repo)
+        public UserService(IUserRepository repo, IFileStorageService fileStorageService)
         {
             _repo = repo;
+            _fileStorageService = fileStorageService;
         }
 
         public async Task<UserResponseDto> GetById(int id, int currentUserId, bool isAdmin)
@@ -43,7 +45,14 @@ namespace backend.Services
             user.FullName = dto.FullName;
             user.Phone = dto.Phone;
             user.Address = dto.Address;
-            user.Avatar = dto.Avatar;
+
+            if (dto.Avatar != null)
+            {
+                await _fileStorageService.DeleteImage(user.Avatar);
+
+                user.Avatar = await _fileStorageService.SaveImage(dto.Avatar, "Users");
+            }
+
             await _repo.Update(user);
             return MapToDto(user);
         }
@@ -59,7 +68,7 @@ namespace backend.Services
             var user = await _repo.GetById(id);
             if (user == null)
             {
-                throw new KeyNotFoundException("User not found.");  
+                throw new KeyNotFoundException("User not found.");
             }
             if (!user.IsActive)
             {
@@ -67,6 +76,44 @@ namespace backend.Services
             }
             user.IsActive = false;
             await _repo.Update(user);
+        }
+
+        public async Task<UserResponseDto> CreateOwner(CreateOwnerDto dto)
+        {
+            if (await _repo.ExistsEmail(dto.Email))
+            {
+                throw new InvalidOperationException("Email already exists.");
+            }
+
+            var user = new User
+            {
+                FullName = dto.FullName,
+                Email = dto.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                Phone = dto.Phone,
+                Address = dto.Address,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createdUser = await _repo.Create(user);
+
+            var ownerRole = await _repo.GetRoleByName("Owner");
+
+            if (ownerRole == null)
+            {
+                throw new KeyNotFoundException("Owner role not found.");
+            }
+
+            await _repo.CreateUserRole(new UserRole
+            {
+                UserId = createdUser.Id,
+                RoleId = ownerRole.Id
+            });
+
+            var result = await _repo.GetById(createdUser.Id);
+
+            return MapToDto(result!);
         }
 
         private static UserResponseDto MapToDto(User user)

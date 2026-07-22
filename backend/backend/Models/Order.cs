@@ -10,11 +10,10 @@ namespace backend.Models
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
-        [Required, Range(0.01, double.MaxValue), Column(TypeName ="decimal(10,2)")]
+        [Required, Range(0.01, double.MaxValue), Column(TypeName = "decimal(10,2)")]
         public decimal TotalAmount { get; set; }
 
-        [StringLength(50)]
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
 
         [Required, StringLength(300)]
         public string ShippingAddress { get; set; } = string.Empty;
@@ -23,7 +22,12 @@ namespace backend.Models
         [ForeignKey(nameof(UserId))]
         public virtual User User { get; set; } = null!;
 
-        public virtual Payment Payment { get; set; } = null!;
+        public virtual Payment? Payment { get; set; }
+        public int RestaurantId { get; set; }
+
+
+        [ForeignKey(nameof(RestaurantId))]
+        public virtual Restaurant Restaurant { get; set; } = null!;
 
         public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     }
@@ -37,5 +41,10 @@ namespace backend.Models
         Completed,
         Cancelled
     }
-
+    public enum PaymentMethod
+    {
+        COD,
+        VNPay,
+        MoMo
+    }
 }

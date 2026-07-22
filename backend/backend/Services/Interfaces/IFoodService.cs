@@ -12,10 +12,10 @@ namespace backend.Services.Interfaces
 
         Task<IEnumerable<FoodDto>> SearchAsync(string keyword);
 
-        Task<FoodDto> CreateAsync(CreateFoodDto dto);
+        Task<FoodDto> CreateAsync(int currentUserId,bool isAdmin,CreateFoodDto dto);
 
-        Task<bool> UpdateAsync(int id, UpdateFoodDto dto);
+        Task UpdateAsync(int id,int currentUserId,bool isAdmin, UpdateFoodDto dto);
 
-        Task<bool> DeleteAsync(int id);
+        Task DeleteAsync(int id, int currentUserId, bool isAdmin);
     }
 }

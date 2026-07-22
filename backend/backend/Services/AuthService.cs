@@ -24,7 +24,7 @@ namespace backend.Services
         {
             if (await _repo.ExistsEmail(dto.Email))
             {
-                throw new Exception("Email has already been used.");
+                throw new InvalidOperationException("Email already exists.");
             }
             var user = new User
             {
@@ -60,11 +60,11 @@ namespace backend.Services
             var user = await _repo.GetByEmail(dto.Email);
             if (user == null)
             {
-                throw new Exception("Email or password is incorrect.");
+                throw new UnauthorizedAccessException("Invalid email or password.");
             }
             if (!user.IsActive)
             {
-                throw new Exception("Account has been locked.");
+                throw new InvalidOperationException("Account has been locked.");
             }
             bool passwordCorrect = BCrypt.Net.BCrypt.Verify(dto.Password, user.Password);
             if (!passwordCorrect)
@@ -75,7 +75,7 @@ namespace backend.Services
             return new AuthResponseDto
             {
                 Success = true,
-                Message = "Đăng nhập thành công.",
+                Message = "Log in successful.",
                 Token = token,
                 User = MapUser(user)
             };
@@ -86,11 +86,11 @@ namespace backend.Services
             var user = await _repo.GetById(userId);
             if (user == null)
             {
-                throw new Exception("User not found.");
+                throw new KeyNotFoundException("User not found.");
             }
             if (!user.IsActive)
             {
-                throw new Exception("Tài khoản đã bị khóa.");
+                throw new Exception("Your account has been locked.");
             }
             return MapUser(user);
         }
@@ -100,12 +100,12 @@ namespace backend.Services
             var user = await _repo.GetById(userId);
             if (user == null)
             {
-                throw new Exception("User not found.");
+                throw new KeyNotFoundException("User not found.");
             }
             bool oldPasswordCorrect = BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.Password);
             if (!oldPasswordCorrect)
             {
-                throw new Exception("Current password is incorrect.");
+                throw new InvalidOperationException("Current password is incorrect.");
             }
             user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             await _repo.Update(user);

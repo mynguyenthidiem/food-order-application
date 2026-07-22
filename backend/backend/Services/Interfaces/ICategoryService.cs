@@ -8,10 +8,10 @@ namespace backend.Services.Interfaces
 
         Task<CategoryDto?> GetByIdAsync(int id);
 
-        Task<CategoryDto> CreateAsync(CreateCategoryDto dto);
+        Task<CategoryDto> CreateAsync(int currentUserId, bool isAdmin, CreateCategoryDto dto);
 
-        Task<bool> UpdateAsync(int id, UpdateCategoryDto dto);
+        Task UpdateAsync(int id, int currentUserId, bool isAdmin, UpdateCategoryDto dto);
 
-        Task<bool> DeleteAsync(int id);
+        Task DeleteAsync(int id, int currentUserId, bool isAdmin);
     }
 }

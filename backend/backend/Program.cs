@@ -38,7 +38,17 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+
+builder.Services.AddScoped<ISystemCategoryRepository, SystemCategoryRepository>();
+builder.Services.AddScoped<ISystemCategoryService, SystemCategoryService>();
+
+builder.Services.AddScoped<IRestaurantRepository, RestaurantRepository>();
+builder.Services.AddScoped<IRestaurantService, RestaurantService>();
+
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -97,39 +107,96 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    // Seed Roles
     if (!context.Roles.Any())
     {
         context.Roles.AddRange(
             new Role { Name = "Admin" },
-            new Role { Name = "User" }
+            new Role { Name = "Owner" },
+            new Role { Name = "Customer" }
         );
 
         context.SaveChanges();
     }
-
-    // Seed Admin
-    if (!context.Users.Any(u => u.Email == "admin@gmail.com"))
+    if (!context.Users.Any())
     {
-        var admin = new User
-        {
-            FullName = "Administrator",
-            Email = "admin@gmail.com",
-            Password = BCrypt.Net.BCrypt.HashPassword("123456"),
-            IsActive = true
-        };
+        context.Users.AddRange(
+            new User
+            {
+                FullName = "Admin",
+                Email = "admin@gmail.com",
+                Password = BCrypt.Net.BCrypt.HashPassword("123456"),
+                IsActive = true
+            },
+            new User
+            {
+                FullName = "Restaurant Owner",
+                Email = "owner@gmail.com",
+                Password = BCrypt.Net.BCrypt.HashPassword("123456"),
+                IsActive = true
+            },
+            new User
+            {
+                FullName = "Customer",
+                Email = "customer@gmail.com",
+                Password = BCrypt.Net.BCrypt.HashPassword("123456"),
+                IsActive = true
+            }
+        );
 
-        context.Users.Add(admin);
         context.SaveChanges();
+    }
+    if (!context.UserRoles.Any())
+    {
+        var admin = context.Users.First(x => x.Email == "admin@gmail.com");
+        var owner = context.Users.First(x => x.Email == "owner@gmail.com");
+        var customer = context.Users.First(x => x.Email == "customer@gmail.com");
 
-        var adminRole = context.Roles.First(r => r.Name == "Admin");
+        var adminRole = context.Roles.First(x => x.Name == "Admin");
+        var ownerRole = context.Roles.First(x => x.Name == "Owner");
+        var customerRole = context.Roles.First(x => x.Name == "Customer");
 
-        context.UserRoles.Add(new UserRole
-        {
-            UserId = admin.Id,
-            RoleId = adminRole.Id
-        });
+        context.UserRoles.AddRange(
+            new UserRole
+            {
+                UserId = admin.Id,
+                RoleId = adminRole.Id
+            },
+            new UserRole
+            {
+                UserId = owner.Id,
+                RoleId = ownerRole.Id
+            },
+            new UserRole
+            {
+                UserId = customer.Id,
+                RoleId = customerRole.Id
+            }
+        );
+
+        context.SaveChanges();
+    }
+    if (!context.Restaurants.Any())
+    {
+        var owner = context.Users.First(x => x.Email == "owner@gmail.com");
+
+        context.Restaurants.AddRange(
+            new Restaurant
+            {
+                Name = "Pizza House",
+                Address = "Thu Dau Mot",
+                Description = "Italian Pizza",
+                OwnerId = owner.Id,
+                IsActive = true
+            },
+            new Restaurant
+            {
+                Name = "KFC",
+                Address = "Binh Duong",
+                Description = "Fast Food",
+                OwnerId = owner.Id,
+                IsActive = true
+            }
+        );
 
         context.SaveChanges();
     }
@@ -142,6 +209,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
 app.UseAuthentication();
 
 app.UseAuthorization();
