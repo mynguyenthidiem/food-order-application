@@ -19,7 +19,26 @@ namespace backend.Repositories
                 .Include(r => r.User)
                 .Where(r => r.FoodId == foodId && r.User.IsActive)
                 .OrderByDescending(r => r.CreatedAt)
+                .AsNoTracking()
                 .ToListAsync();
+        }
+
+        public async Task<(List<Review> Items, int TotalCount)> GetByFoodIdPaged(int foodId, int pageNumber, int pageSize)
+        {
+            var query = _context.Reviews
+                .Include(r => r.User)
+                .Where(r => r.FoodId == foodId && r.User.IsActive)
+                .OrderByDescending(r => r.CreatedAt)
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
 
         public async Task<Review?> GetById(int id)

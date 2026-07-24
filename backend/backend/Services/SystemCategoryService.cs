@@ -9,11 +9,12 @@ namespace backend.Services
     {
         private readonly ISystemCategoryRepository _repository;
         private readonly IFileStorageService _fileStorageService;
-
-        public SystemCategoryService(ISystemCategoryRepository repository, IFileStorageService fileStorageService)
+        private readonly IUrlService _urlService;
+        public SystemCategoryService(ISystemCategoryRepository repository, IFileStorageService fileStorageService, IUrlService urlService)
         {
             _repository = repository;
             _fileStorageService = fileStorageService;
+            _urlService = urlService;
         }
 
         public async Task<IEnumerable<SystemCategoryDto>> GetAllAsync()
@@ -91,14 +92,14 @@ namespace backend.Services
             await _repository.UpdateAsync(category);
         }
 
-        private static SystemCategoryDto MapToDto(SystemCategory category)
+        private SystemCategoryDto MapToDto(SystemCategory category)
         {
             return new SystemCategoryDto
             {
                 Id = category.Id,
                 Name = category.Name,
                 Description = category.Description,
-                Image = category.Image
+                Image = string.IsNullOrEmpty(category.Image)? null: _urlService.GetAbsoluteUrl(category.Image)
             };
         }
     }

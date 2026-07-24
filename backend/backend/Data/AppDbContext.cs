@@ -19,6 +19,7 @@ namespace backend.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Restaurant> Restaurants { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -185,6 +186,15 @@ namespace backend.Data
                 .WithMany(u => u.Restaurants)
                 .HasForeignKey(r => r.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+            // Notification -> User (xoá user thì xoá luôn thông báo của họ)
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+             .HasIndex(n => new { n.UserId, n.CreatedAt });
         }
     }
 }

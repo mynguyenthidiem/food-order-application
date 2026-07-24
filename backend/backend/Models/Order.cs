@@ -12,6 +12,8 @@ namespace backend.Models
 
         [Required, Range(0.01, double.MaxValue), Column(TypeName = "decimal(10,2)")]
         public decimal TotalAmount { get; set; }
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DeliveryFee { get; set; } = 0;
 
         public PaymentMethod PaymentMethod { get; set; }
 

@@ -4,7 +4,7 @@ namespace backend.Repositories.Interfaces
 {
     public interface IRestaurantRepository
     {
-        Task<List<Restaurant>> GetAll();
+        Task<(List<Restaurant> Items, int TotalCount)> GetAll(int pageNumber, int pageSize);
 
         Task<Restaurant?> GetById(int id);
 
@@ -14,5 +14,6 @@ namespace backend.Repositories.Interfaces
 
         Task Delete(int id);
         Task UpdateRestaurantRatingAsync(int restaurantId);
+        Task DeactivateAllByOwnerAsync(int ownerId);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using backend.DTOs.Food;
+using backend.DTOs.Page;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,9 +27,9 @@ namespace backend.Controllers
 
         [AllowAnonymous]
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] PaginationParams pagination)
         {
-            var foods = await _service.GetAllAsync();
+            var foods = await _service.GetAllAsync(pagination);
             return Ok(foods);
         }
 
@@ -54,21 +55,21 @@ namespace backend.Controllers
 
         [AllowAnonymous]
         [HttpGet("category/{id}")]
-        public async Task<IActionResult> GetByCategory(int id)
+        public async Task<IActionResult> GetByCategory(int id, [FromQuery] PaginationParams pagination)
         {
-            var foods = await _service.GetByCategoryAsync(id);
+            var foods = await _service.GetByCategoryAsync(id, pagination);
             return Ok(foods);
         }
 
         [AllowAnonymous]
         [HttpGet("search")]
-        public async Task<IActionResult> Search([FromQuery] string keyword)
+        public async Task<IActionResult> Search([FromQuery] string keyword, [FromQuery] PaginationParams pagination)
         {
             if (string.IsNullOrWhiteSpace(keyword))
             {
                 return BadRequest(new { message = "Keyword is required." });
             }
-            var foods = await _service.SearchAsync(keyword);
+            var foods = await _service.SearchAsync(keyword, pagination);
             return Ok(foods);
         }
 
@@ -86,6 +87,10 @@ namespace backend.Controllers
                 return CreatedAtAction(nameof(GetById),
                     new { id = food.Id },
                     food);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -144,10 +149,7 @@ namespace backend.Controllers
 
                 await _service.DeleteAsync(id, GetCurrentUserId(), IsAdmin());
 
-                return Ok(new
-                {
-                    message = "Food deleted successfully."
-                });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {

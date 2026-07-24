@@ -4,7 +4,7 @@ namespace backend.Repositories.Interfaces
 {
     public interface IUserRepository
     {
-        Task<List<User>> GetAll();
+        Task<(List<User> Items, int TotalCount)> GetAll(int pageNumber, int pageSize);
         Task<User?> GetById(int id);
         Task<User?> GetByEmail(string email);
         Task<bool> ExistsEmail(string email);

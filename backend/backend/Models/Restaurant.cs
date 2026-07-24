@@ -17,8 +17,8 @@ namespace backend.Models
         [StringLength(100),EmailAddress]
         public string? Email { get; set; }
         public string? Description { get; set; }
-        public TimeOnly OpenTime { get; set; } = new(8, 0);
-        public TimeOnly CloseTime { get; set; } = new(22, 0);
+        public DateTime OpenTime { get; set; } = new(8, 0);
+        public DateTime CloseTime { get; set; } = new(22, 0);
         [Column(TypeName = "decimal(10,2)")]
         public decimal DeliveryFee { get; set; } = 0;
         public double Rating { get; set; } = 0;

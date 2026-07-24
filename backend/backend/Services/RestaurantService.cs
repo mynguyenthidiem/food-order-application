@@ -1,4 +1,5 @@
-﻿using backend.DTOs.Restaurant;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Restaurant;
 using backend.Models;
 using backend.Repositories.Interfaces;
 using backend.Services.Interfaces;
@@ -9,17 +10,19 @@ namespace backend.Services
     {
         private readonly IRestaurantRepository _repository;
         private readonly IFileStorageService _fileStorageService;
+        private readonly IUrlService _urlService;
 
-        public RestaurantService(IRestaurantRepository repository, IFileStorageService fileStorageService)
+        public RestaurantService(IRestaurantRepository repository, IFileStorageService fileStorageService, IUrlService urlService)
         {
             _repository = repository;
             _fileStorageService = fileStorageService;
+            _urlService = urlService;
         }
 
-        public async Task<List<RestaurantDto>> GetAll()
+        public async Task<PagedResultDto<RestaurantDto>> GetAll(PaginationParams pagination)
         {
-            var restaurants = await _repository.GetAll();
-            return restaurants.Select(MapToDto).ToList();
+            var (items, totalCount) = await _repository.GetAll(pagination.PageNumber,pagination.PageSize);
+            return new PagedResultDto<RestaurantDto>(items.Select(MapToDto).ToList(), totalCount, pagination.PageNumber,pagination.PageSize);
         }
 
         public async Task<RestaurantDto?> GetById(int id)
@@ -82,7 +85,6 @@ namespace backend.Services
             restaurant.OpenTime = dto.OpenTime;
             restaurant.CloseTime = dto.CloseTime;
             restaurant.DeliveryFee = dto.DeliveryFee;
-            restaurant.IsActive = dto.IsActive;
 
             if (dto.Image != null)
             {
@@ -115,7 +117,18 @@ namespace backend.Services
             await _repository.Update(restaurant);
         }
 
-        private static RestaurantDto MapToDto(Restaurant restaurant)
+        public async Task SetActiveStatus (int id, bool isActive)
+        {
+            var restaurant = await _repository.GetById(id);
+            if (restaurant == null)
+            {
+                throw new KeyNotFoundException("Restaurant not found.");
+            }
+            restaurant.IsActive = isActive;
+            await _repository.Update(restaurant);
+        }
+
+        private  RestaurantDto MapToDto(Restaurant restaurant)
         {
             return new RestaurantDto
             {
@@ -123,7 +136,7 @@ namespace backend.Services
                 Name = restaurant.Name,
                 Address = restaurant.Address,
                 Description = restaurant.Description,
-                ImageUrl = restaurant.ImageUrl,
+                ImageUrl = string.IsNullOrEmpty(restaurant.ImageUrl) ? null : _urlService.GetAbsoluteUrl(restaurant.ImageUrl),
                 PhoneNumber = restaurant.PhoneNumber,
                 Email = restaurant.Email,
                 OpenTime = restaurant.OpenTime,

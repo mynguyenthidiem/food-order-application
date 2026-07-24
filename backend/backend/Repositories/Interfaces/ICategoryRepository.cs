@@ -23,5 +23,6 @@ namespace backend.Repositories.Interfaces
         Task<SystemCategory?> GetSystemCategoryAsync(int systemCategoryId);
 
         Task<bool> ExistsByRestaurantAndSystemCategoryAsync(int restaurantId, int systemCategoryId, int? excludeCategoryId = null);
+        Task DeactivateFoodsByCategoryAsync(int categoryId);
     }
 }

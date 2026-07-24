@@ -1,4 +1,5 @@
 ﻿using backend.DTOs.Auth;
+using backend.DTOs.Page;
 using backend.DTOs.User;
 using backend.Models;
 using backend.Repositories.Interfaces;
@@ -57,10 +58,10 @@ namespace backend.Services
             return MapToDto(user);
         }
 
-        public async Task<List<UserResponseDto>> GetAll()
+        public async Task<PagedResultDto<UserResponseDto>> GetAll(PaginationParams pagination)
         {
-            var users = await _repo.GetAll();
-            return users.Select(MapToDto).ToList();
+            var (items, totalCount) = await _repo.GetAll(pagination.PageNumber, pagination.PageSize);
+            return new PagedResultDto<UserResponseDto>(items.Select(MapToDto).ToList(), totalCount, pagination.PageNumber, pagination.PageSize);
         }
 
         public async Task Delete(int id)

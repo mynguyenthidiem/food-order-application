@@ -44,11 +44,17 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<ISystemCategoryRepository, SystemCategoryRepository>();
 builder.Services.AddScoped<ISystemCategoryService, SystemCategoryService>();
 
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+
 builder.Services.AddScoped<IRestaurantRepository, RestaurantRepository>();
 builder.Services.AddScoped<IRestaurantService, RestaurantService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<IUrlService, UrlService>();
+builder.Services.AddHttpContextAccessor(); 
 
 // Add services to the container.
 builder.Services.AddControllers();

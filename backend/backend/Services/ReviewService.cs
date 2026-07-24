@@ -1,4 +1,5 @@
-﻿using backend.DTOs.Review;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Review;
 using backend.Models;
 using backend.Repositories.Interfaces;
 using backend.Services.Interfaces;
@@ -16,15 +17,22 @@ namespace backend.Services
             _restaurantRepo = restaurantRepo;
         }
 
-        public async Task<FoodRatingSummaryDto> GetByFood(int foodId)
+        public async Task<FoodRatingSummaryDto> GetByFood(int foodId, PaginationParams pagination)
         {
             var reviews = await _repo.GetByFoodId(foodId);
+
+            var (items, totalCount) = await _repo.GetByFoodIdPaged(
+                foodId,
+                pagination.PageNumber,
+                pagination.PageSize);
+
             return new FoodRatingSummaryDto
             {
                 FoodId = foodId,
-                TotalReviews = reviews.Count,
-                AverageRating = reviews.Any() ? Math.Round(reviews.Average(x => x.Rating), 1) : 0,
-                Reviews = reviews.Select(MapToDto).ToList()
+                TotalReviews = totalCount,
+                AverageRating = reviews.Any() ? Math.Round(reviews.Average(x => x.Rating), 1): 0,
+
+                Reviews = items.Select(MapToDto).ToList()
             };
         }
 

@@ -1,4 +1,5 @@
-﻿using backend.DTOs.User;
+﻿using backend.DTOs.Page;
+using backend.DTOs.User;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,9 +77,9 @@ namespace backend.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] PaginationParams pagination)
         {
-            var users = await _service.GetAll();
+            var users = await _service.GetAll(pagination);
             return Ok(users);
         }
 

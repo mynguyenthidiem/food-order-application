@@ -21,9 +21,9 @@ namespace backend.DTOs.Restaurant
 
         public string? Description { get; set; }
 
-        public TimeOnly OpenTime { get; set; } = new(8, 0);
+        public DateTime OpenTime { get; set; } = new(8, 0);
 
-        public TimeOnly CloseTime { get; set; } = new(22, 0);
+        public DateTime CloseTime { get; set; } = new(22, 0);
 
         [Range(0, 1000000, ErrorMessage = "Phí giao hàng không hợp lệ.")]
         public decimal DeliveryFee { get; set; } = 0;

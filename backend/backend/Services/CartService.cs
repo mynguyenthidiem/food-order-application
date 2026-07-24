@@ -48,6 +48,10 @@ namespace backend.Services
             var cart = await _repository.GetByUserAndFoodAsync(userId, dto.FoodId);
             if (cart != null)
             {
+                if (cart.Quantity + dto.Quantity > 100)
+                {
+                    throw new InvalidOperationException("Maximum quantity for one food is 100.");
+                }
                 cart.Quantity += dto.Quantity;
                 await _repository.UpdateAsync(cart);
 

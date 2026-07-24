@@ -9,8 +9,8 @@
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
         public string? Description { get; set; }
-        public TimeOnly OpenTime { get; set; }
-        public TimeOnly CloseTime { get; set; }
+        public DateTime OpenTime { get; set; }
+        public DateTime CloseTime { get; set; }
         public decimal DeliveryFee { get; set; }
         public double Rating { get; set; }
         public int TotalReviews { get; set; }

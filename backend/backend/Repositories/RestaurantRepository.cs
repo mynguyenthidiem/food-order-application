@@ -14,12 +14,17 @@ namespace backend.Repositories
             _context = context;
         }
 
-        public async Task<List<Restaurant>> GetAll()
+        public async Task<(List<Restaurant> Items, int TotalCount)> GetAll(int pageNumber, int pageSize)
         {
-            return await _context.Restaurants
+            var query = _context.Restaurants
                 .Where(r => r.IsActive)
-                .OrderByDescending(r => r.Rating) 
-                .ToListAsync();
+                .OrderByDescending(r => r.Rating)
+                .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
         }
 
         public async Task<Restaurant?> GetById(int id)
@@ -75,5 +80,20 @@ namespace backend.Repositories
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeactivateAllByOwnerAsync(int ownerId)
+        {
+            var restaurants = await _context.Restaurants
+                .Where(r => r.OwnerId == ownerId && r.IsActive)
+                .ToListAsync();
+
+            foreach (var restaurant in restaurants)
+            {
+                restaurant.IsActive = false;
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
     }
 }
