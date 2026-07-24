@@ -14,13 +14,18 @@ namespace backend.Repositories
             _context = context;
         }
 
-        public async Task<List<User>> GetAll()
+        public async Task<(List<User> Items, int TotalCount)> GetAll(int pageNumber, int pageSize)
         {
-            return await _context.Users
+            var query = _context.Users
                 .Where(u => u.IsActive)
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                .ToListAsync();
+                .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
         }
 
         public async Task<User?> GetById(int id)
@@ -51,6 +56,7 @@ namespace backend.Repositories
         public async Task<User> Create(User user)
         {
             user.Email = user.Email.Trim().ToLower();
+            _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return user;
         }

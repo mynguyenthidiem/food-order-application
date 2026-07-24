@@ -8,10 +8,12 @@ namespace backend.Services
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _repository;
+        private readonly IUrlService _urlService;
 
-        public CategoryService(ICategoryRepository repository)
+        public CategoryService(ICategoryRepository repository, IUrlService urlService)
         {
             _repository = repository;
+            _urlService = urlService;
         }
 
         public async Task<IEnumerable<CategoryDto>> GetAllAsync()
@@ -120,9 +122,10 @@ namespace backend.Services
 
             category.IsActive = false;
             await _repository.UpdateAsync(category);
+            await _repository.DeactivateFoodsByCategoryAsync(category.Id);
         }
 
-        private static CategoryDto MapToDto(Category category)
+        private CategoryDto MapToDto(Category category)
         {
             return new CategoryDto
             {
@@ -131,7 +134,7 @@ namespace backend.Services
                 SystemCategoryId = category.SystemCategoryId,
                 Name = category.SystemCategory?.Name ?? string.Empty,
                 Description = category.SystemCategory?.Description,
-                Image = category.SystemCategory?.Image
+                Image = string.IsNullOrEmpty(category.SystemCategory?.Image) ? null : _urlService.GetAbsoluteUrl(category.SystemCategory.Image)
             };
         }
     }

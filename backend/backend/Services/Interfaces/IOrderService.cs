@@ -1,11 +1,12 @@
-﻿using backend.DTOs.Order;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Order;
 using backend.Models;
 
 namespace backend.Services.Interfaces
 {
     public interface IOrderService
     {
-        Task<IEnumerable<OrderDto>> GetOrdersAsync(int userId);
+        Task<PagedResultDto<OrderDto>> GetOrdersAsync(int userId, PaginationParams pagination);
 
         Task<OrderDto?> GetOrderByIdAsync(int userId, int orderId);
 
@@ -17,8 +18,8 @@ namespace backend.Services.Interfaces
 
         Task UpdateOrderStatusAsync(int orderId, int currentUserId, bool isAdmin, UpdateOrderStatusDto dto);
 
-        Task<IEnumerable<OrderDto>> GetRestaurantOrdersAsync(int ownerId);
+        Task<PagedResultDto<OrderDto>> GetRestaurantOrdersAsync(int ownerId, PaginationParams pagination);
 
-        Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
+        Task<PagedResultDto<OrderDto>> GetAllOrdersAsync(PaginationParams pagination);
     }
 }

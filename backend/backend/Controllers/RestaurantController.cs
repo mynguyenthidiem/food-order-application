@@ -1,4 +1,5 @@
-﻿using backend.DTOs.Restaurant;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Restaurant;
 using backend.Repositories.Interfaces;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -20,11 +21,11 @@ namespace backend.Controllers
 
         [AllowAnonymous]
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] PaginationParams pagination)
         {
             try
             {
-                var restaurants = await _service.GetAll();
+                var restaurants = await _service.GetAll(pagination);
                 return Ok(restaurants);
             }
             catch (Exception)
@@ -140,6 +141,24 @@ namespace backend.Controllers
                 return Forbid();
             }
             catch (Exception )
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+        [Authorize(Roles ="Admin")]
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> SetActiveStatus (int id, [FromBody] bool isActive)
+        {
+            try
+            {
+                await _service.SetActiveStatus(id, isActive);
+                return Ok(new { message = isActive ? "Restaurant activated." : "Restaurant deactivated." });
+            }
+            catch(KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }

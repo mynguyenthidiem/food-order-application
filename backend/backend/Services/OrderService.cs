@@ -1,4 +1,5 @@
-﻿using backend.DTOs.Order;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Order;
 using backend.Models;
 using backend.Repositories.Interfaces;
 using backend.Services.Interfaces;
@@ -16,10 +17,10 @@ namespace backend.Services
             _paymentService = paymentService;
         }
 
-        public async Task<IEnumerable<OrderDto>> GetOrdersAsync(int userId)
+        public async Task<PagedResultDto<OrderDto>> GetOrdersAsync(int userId, PaginationParams pagination)
         {
-            var orders = await _repository.GetUserOrdersAsync(userId);
-            return orders.Select(MapToDto);
+            var (items, totalCount) = await _repository.GetUserOrdersAsync(userId, pagination.PageNumber, pagination.PageSize);
+            return new PagedResultDto<OrderDto>(items.Select(MapToDto).ToList(), totalCount, pagination.PageNumber, pagination.PageSize);
         }
 
         public async Task<OrderDto?> GetOrderByIdAsync(int userId, int orderId)
@@ -35,38 +36,6 @@ namespace backend.Services
             return MapToDto(order);
         }
 
-        private static OrderDto MapToDto(Order order)
-        {
-            return new OrderDto
-            {
-                Id = order.Id,
-                OrderDate = order.OrderDate,
-                Status = order.Status,
-                TotalAmount = order.TotalAmount,
-                PaymentMethod = order.PaymentMethod,
-                ShippingAddress = order.ShippingAddress,
-
-                Payment = order.Payment == null ? null : new PaymentResponseDto
-                {
-                    Id = order.Payment.Id,
-                    OrderId = order.Payment.OrderId,
-                    Amount = order.Payment.Amount,
-                    Status = order.Payment.Status,
-                    TransactionId = order.Payment.TransactionId,
-                    CreatedAt = order.Payment.CreatedAt
-                },
-
-                OrderDetails = order.OrderDetails.Select(d => new OrderDetailDto
-                {
-                    FoodId = d.FoodId,
-                    FoodName = d.Food?.Name ?? "",
-                    Price = d.Price,
-                    Quantity = d.Quantity,
-                    SubTotal = d.SubTotal
-                }).ToList()
-            };
-        }
-
         public async Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto dto)
         {
             await using var transaction = await _repository.BeginTransactionAsync();
@@ -75,12 +44,39 @@ namespace backend.Services
             {
                 var carts = (await _repository.GetSelectedCartAsync(userId, dto.CartIds)).ToList();
                 if (!carts.Any())
+                {
                     throw new InvalidOperationException("Cart is empty.");
-
+                }
+                if (carts.Count != dto.CartIds.Count)
+                {
+                    throw new InvalidOperationException("Some selected cart items no longer exist.");
+                }
                 var firstCart = carts.First();
-                int restaurantId = firstCart.Food?.RestaurantId
-                                   ?? firstCart.Food?.Category?.RestaurantId
-                                   ?? throw new InvalidOperationException("Invalid restaurant data in cart.");
+                if (carts.Any(c => c.Food == null))
+                {
+                    throw new InvalidOperationException("Some foods no longer exist.");
+                }
+
+                if (carts.Select(c => c.Food!.RestaurantId).Distinct().Count() > 1)
+                {
+                    throw new InvalidOperationException(
+                        "You can only checkout foods from one restaurant at a time.");
+                }
+                var restaurant = carts.First().Food!.Restaurant;
+
+                if (restaurant == null || !restaurant.IsActive)
+                {
+                    throw new InvalidOperationException("Restaurant is unavailable.");
+                }
+
+                int restaurantId = restaurant.Id;
+
+                var now = DateTime.Now.TimeOfDay;
+
+                if (DateTime.UtcNow < restaurant.OpenTime || DateTime.UtcNow > restaurant.CloseTime)
+                {
+                    throw new InvalidOperationException("Restaurant is currently closed.");
+                }
 
                 var order = new Order
                 {
@@ -90,6 +86,7 @@ namespace backend.Services
                     Status = OrderStatus.Pending,
                     ShippingAddress = dto.ShippingAddress,
                     PaymentMethod = dto.PaymentMethod,
+                    DeliveryFee = restaurant.DeliveryFee,
                     TotalAmount = 0
                 };
 
@@ -102,8 +99,7 @@ namespace backend.Services
                 {
                     if (cart.Food == null || cart.Food.Status != FoodStatus.Available)
                     {
-                        throw new InvalidOperationException(
-                            $"Món ăn '{cart.Food?.Name ?? "đã chọn"}' hiện đã ngưng phục vụ. Vui lòng bỏ món này khỏi giỏ hàng.");
+                        throw new InvalidOperationException($"Food '{cart.Food?.Name ?? "selected"}' is no longer available. Please remove this item from your cart.");
                     }
 
                     decimal price = cart.Food.Price;
@@ -123,7 +119,7 @@ namespace backend.Services
                     await _repository.AddOrderDetailAsync(orderDetail);
                 }
 
-                order.TotalAmount = totalAmount;
+                order.TotalAmount = totalAmount + order.DeliveryFee;
 
                 await _repository.ClearSelectedCartAsync(userId, dto.CartIds);
                 await _repository.SaveChangesAsync();
@@ -160,8 +156,8 @@ namespace backend.Services
                 throw new InvalidOperationException("Only pending orders can be updated.");
 
             order.ShippingAddress = dto.ShippingAddress;
-            if (order.Payment != null
-               && order.Payment.Status == PaymentStatus.Pending)
+            order.PaymentMethod = dto.PaymentMethod;
+            if (order.Payment != null && order.Payment.Status == PaymentStatus.Pending)
             {
                 order.Payment.Method = dto.PaymentMethod;
             }
@@ -174,17 +170,24 @@ namespace backend.Services
             var order = await _repository.GetByIdAsync(orderId);
 
             if (order == null)
-                throw new Exception("Order not found.");
+                throw new KeyNotFoundException("Order not found.");
 
             if (order.UserId != userId)
-                throw new Exception("You are not allowed to delete this order.");
+                throw new UnauthorizedAccessException("You are not allowed to delete this order.");
 
             if (order.Status != OrderStatus.Pending)
             {
                 throw new InvalidOperationException("Only pending orders can be cancelled.");
             }
 
-            await _repository.DeleteOrderAsync(order);
+            order.Status = OrderStatus.Cancelled;
+
+            if (order.Payment != null)
+            {
+                order.Payment.Status = PaymentStatus.Cancelled;
+            }
+
+            await _repository.UpdateOrderAsync(order);
         }
 
         public async Task UpdateOrderStatusAsync(int orderId, int currentUserId, bool isAdmin, UpdateOrderStatusDto dto)
@@ -217,23 +220,66 @@ namespace backend.Services
                 throw new InvalidOperationException("Cannot change order status.");
             }
 
+            if (dto.Status == OrderStatus.Completed
+               && order.PaymentMethod == PaymentMethod.COD
+               && order.Payment?.Status != PaymentStatus.Completed)
+            {
+                throw new InvalidOperationException("Please confirm COD payment has been collected (CompletePayment) before marking this order as Completed.");
+            }
+
+
             order.Status = dto.Status;
 
             await _repository.UpdateOrderAsync(order);
         }
 
-        public async Task<IEnumerable<OrderDto>> GetRestaurantOrdersAsync(int ownerId)
+        public async Task<PagedResultDto<OrderDto>> GetRestaurantOrdersAsync(int ownerId, PaginationParams pagination)
         {
-            var orders = await _repository.GetRestaurantOrdersAsync(ownerId);
+            var (items, totalCount) = await _repository.GetRestaurantOrdersAsync(ownerId, pagination.PageNumber, pagination.PageSize);
 
-            return orders.Select(MapToDto);
+            return new PagedResultDto<OrderDto>(items.Select(MapToDto).ToList(), totalCount, pagination.PageNumber, pagination.PageSize);
         }
 
-        public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync()
+        public async Task<PagedResultDto<OrderDto>> GetAllOrdersAsync(PaginationParams pagination)
         {
-            var orders = await _repository.GetAllOrdersAsync();
+            var (items, totalCount) = await _repository.GetAllOrdersAsync(pagination.PageNumber, pagination.PageSize);
 
-            return orders.Select(MapToDto);
+            return new PagedResultDto<OrderDto>(items.Select(MapToDto).ToList(), totalCount, pagination.PageNumber, pagination.PageSize);
+        }
+
+
+
+        private static OrderDto MapToDto(Order order)
+        {
+            return new OrderDto
+            {
+                Id = order.Id,
+                OrderDate = order.OrderDate,
+                Status = order.Status,
+                TotalAmount = order.TotalAmount,
+                DeliveryFee = order.DeliveryFee,
+                PaymentMethod = order.PaymentMethod,
+                ShippingAddress = order.ShippingAddress,
+
+                Payment = order.Payment == null ? null : new PaymentResponseDto
+                {
+                    Id = order.Payment.Id,
+                    OrderId = order.Payment.OrderId,
+                    Amount = order.Payment.Amount,
+                    Status = order.Payment.Status,
+                    TransactionId = order.Payment.TransactionId,
+                    CreatedAt = order.Payment.CreatedAt
+                },
+
+                OrderDetails = order.OrderDetails.Select(d => new OrderDetailDto
+                {
+                    FoodId = d.FoodId,
+                    FoodName = d.Food?.Name ?? "",
+                    Price = d.Price,
+                    Quantity = d.Quantity,
+                    SubTotal = d.SubTotal
+                }).ToList()
+            };
         }
 
         private bool IsValidStatus(OrderStatus status)

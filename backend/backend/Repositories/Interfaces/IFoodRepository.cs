@@ -4,15 +4,17 @@ namespace backend.Repositories.Interfaces
 {
     public interface IFoodRepository
     {
-        Task<IEnumerable<Food>> GetAllAsync();
+        Task<(List<Food> Items, int TotalCount)> GetAllAsync(int pageNumber, int pageSize);
 
         Task<Food?> GetByIdAsync(int id);
+        Task<Food?> GetFoodForManagementAsync(int id);
 
-        Task<IEnumerable<Food>> GetByCategoryAsync(int categoryId);
+        Task<(List<Food> Items,  int TotalCount)> GetByCategoryAsync(int categoryId, int pageNumber, int pageSize);
 
-        Task<IEnumerable<Food>> SearchAsync(string keyword);
+        Task<(List<Food> Items, int TotalCount)> GetBySystemCategoryAsync(int systemCategoryId, int pageNumber, int PageSize);
+        Task<(List<Food> Items, int TotalCount)> SearchAsync(string keyword, int pageNumber, int pageSize);
 
-        Task<Food> CreateAsync(Food food);
+        Task CreateAsync(Food food);
 
         Task UpdateAsync(Food food);
 

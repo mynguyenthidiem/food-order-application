@@ -1,4 +1,5 @@
 ﻿using backend.DTOs.Order;
+using backend.DTOs.Page;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,9 +30,9 @@ namespace backend.Controllers
 
         [Authorize(Roles ="Customer")]
         [HttpGet]
-        public async Task<IActionResult> GetOrders()
+        public async Task<IActionResult> GetOrders([FromQuery] PaginationParams pagination)
         {
-            var orders = await _service.GetOrdersAsync(GetCurrentUserId());
+            var orders = await _service.GetOrdersAsync(GetCurrentUserId(), pagination);
             return Ok(orders);
         }
 
@@ -172,16 +173,16 @@ namespace backend.Controllers
         }
         [Authorize(Roles = "Owner")]
         [HttpGet("restaurant")]
-        public async Task<IActionResult> GetRestaurantOrders()
+        public async Task<IActionResult> GetRestaurantOrders([FromQuery] PaginationParams pagination)
         {
-            var orders = await _service.GetRestaurantOrdersAsync(GetCurrentUserId());
+            var orders = await _service.GetRestaurantOrdersAsync(GetCurrentUserId(), pagination);
             return Ok(orders);
         }
         [Authorize(Roles = "Admin")]
         [HttpGet("all")]
-        public async Task<IActionResult> GetAllOrders()
+        public async Task<IActionResult> GetAllOrders([FromQuery] PaginationParams pagination)
         {
-            var orders = await _service.GetAllOrdersAsync();
+            var orders = await _service.GetAllOrdersAsync(pagination);
             return Ok(orders);
         }
     }

@@ -14,10 +14,9 @@ namespace backend.Repositories
             _context = context;
         }
 
-        // GET: api/foods
-        public async Task<IEnumerable<Food>> GetAllAsync()
+        public async Task<(List<Food> Items, int TotalCount)> GetAllAsync(int pageNumber, int pageSize)
         {
-            return await _context.Foods
+            var query = _context.Foods
                 .Include(f => f.Category)
                     .ThenInclude(c => c!.SystemCategory)
                 .Include(f => f.Restaurant)
@@ -25,27 +24,40 @@ namespace backend.Repositories
                             && f.Category!.IsActive
                             && f.Restaurant!.IsActive)
                 .OrderByDescending(f => f.CreatedAt)
-                .AsNoTracking()
-                .ToListAsync();
+                .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
         }
 
-        // GET: api/foods/{id}
         public async Task<Food?> GetByIdAsync(int id)
         {
             return await _context.Foods
                 .Include(f => f.Category)
                     .ThenInclude(c => c!.SystemCategory)
                 .Include(f => f.Restaurant)
-                .FirstOrDefaultAsync(f => f.Id == id
-                                        && f.Status == FoodStatus.Available
-                                        && f.Category!.IsActive
-                                        && f.Restaurant!.IsActive);
+                .FirstOrDefaultAsync(f =>
+                    f.Id == id &&
+                    f.Status == FoodStatus.Available &&
+                    f.Category != null &&
+                    f.Category.IsActive &&
+                    f.Restaurant != null &&
+                    f.Restaurant.IsActive
+                );
         }
-
-        // GET: api/foods/category/{id}
-        public async Task<IEnumerable<Food>> GetByCategoryAsync(int categoryId)
+        public async Task<Food?> GetFoodForManagementAsync(int id)
         {
             return await _context.Foods
+                .Include(f => f.Category)
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .FirstOrDefaultAsync(f => f.Id == id);
+        }
+        public async Task<(List<Food> Items, int TotalCount)> GetByCategoryAsync(int categoryId, int pageNumber, int pageSize)
+        {
+            var query = _context.Foods
                 .Include(f => f.Category)
                     .ThenInclude(c => c!.SystemCategory)
                 .Include(f => f.Restaurant)
@@ -54,40 +66,80 @@ namespace backend.Repositories
                         && f.Category!.IsActive
                         && f.Restaurant!.IsActive)
                 .OrderBy(f => f.Name)
-                .AsNoTracking()
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
 
-        // GET: api/foods/search?keyword=
-        public async Task<IEnumerable<Food>> SearchAsync(string keyword)
+        public async Task<(List<Food> Items, int TotalCount)> GetBySystemCategoryAsync(int systemCategoryId, int pageNumber, int pageSize)
+        {
+            var query = _context.Foods
+                .Include(f => f.Category)
+                    .ThenInclude(c => c!.SystemCategory)
+                .Include(f => f.Restaurant)
+                .Where(f => f.Category!.SystemCategoryId == systemCategoryId
+                        && f.Status == FoodStatus.Available
+                        && f.Category!.IsActive
+                        && f.Restaurant!.IsActive)
+                .OrderByDescending(f => f.CreatedAt)
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+
+        public async Task<(List<Food> Items, int TotalCount)> SearchAsync(string keyword, int pageNumber, int pageSize)
         {
             if (string.IsNullOrWhiteSpace(keyword))
             {
-                return Enumerable.Empty<Food>();
+                return (new List<Food>(), 0);
             }
 
             var searchTerm = keyword.Trim();
 
-            return await _context.Foods
+            var query = _context.Foods
                 .Include(f => f.Category)
                     .ThenInclude(c => c!.SystemCategory)
                 .Include(f => f.Restaurant)
                 .Where(f => f.Status == FoodStatus.Available
-                        && f.Category!.IsActive
-                        && f.Restaurant!.IsActive
-                        && (EF.Functions.Like(f.Name, $"%{searchTerm}%")
-                            || (f.Description != null && EF.Functions.Like(f.Description, $"%{searchTerm}%"))))
+                            && f.Category != null
+                            && f.Category.IsActive
+                            && f.Restaurant != null
+                            && f.Restaurant.IsActive
+                            && ( f.Name.Contains(searchTerm) || (f.Description != null
+                            && f.Description.Contains(searchTerm))))
                 .OrderBy(f => f.Name)
-                .AsNoTracking()
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
 
         // POST
-        public async Task<Food> CreateAsync(Food food)
+        public async Task CreateAsync(Food food)
         {
             _context.Foods.Add(food);
             await _context.SaveChangesAsync();
-            return food;
         }
 
         // PUT

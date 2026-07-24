@@ -11,6 +11,7 @@ namespace backend.DTOs.Order
         public OrderStatus Status { get; set; } 
 
         public decimal TotalAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
 
         public PaymentMethod PaymentMethod { get; set; }
 

@@ -88,5 +88,19 @@ namespace backend.Repositories
                 c.IsActive &&
                 (excludeCategoryId == null || c.Id != excludeCategoryId));
         }
+
+        public async Task DeactivateFoodsByCategoryAsync(int categoryId)
+        {
+            var foods = await _context.Foods
+                .Where(f => f.CategoryId == categoryId && f.Status == FoodStatus.Available)
+                .ToListAsync();
+
+            foreach (var food in foods)
+            {
+                food.Status = FoodStatus.Unavailable;
+            }
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

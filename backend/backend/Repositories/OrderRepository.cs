@@ -15,18 +15,24 @@ namespace backend.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Order>> GetUserOrdersAsync(int userId)
+        public async Task<(List<Order> Items, int TotalCount)> GetUserOrdersAsync(int userId, int pageNumber, int pageSize)
         {
-            return await _context.Orders
+            var query = _context.Orders
                 .Include(o => o.Restaurant)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(d => d.Food)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
+                .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
+
         }
 
-        public async Task<IEnumerable<Cart>> GetSelectedCartAsync(int userId, List<int> cartIds)
+        public async Task<List<Cart>> GetSelectedCartAsync(int userId, List<int> cartIds)
         {
             return await _context.Carts
                 .Include(c => c.Food)
@@ -87,7 +93,7 @@ namespace backend.Repositories
             return Task.CompletedTask;
         }
 
-        public async Task<IEnumerable<Cart>> GetUserCartAsync(int userId)
+        public async Task<List<Cart>> GetUserCartAsync(int userId)
         {
             return await _context.Carts
                 .Include(c => c.Food)
@@ -124,28 +130,37 @@ namespace backend.Repositories
                .FirstOrDefaultAsync(o => o.Id == id);
         }
 
-        public async Task<IEnumerable<Order>> GetRestaurantOrdersAsync(int ownerId)
+        public async Task<(List<Order> Items, int TotalCount)> GetRestaurantOrdersAsync(int ownerId, int pageNumber, int pageSize)
         {
-            return await _context.Orders
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Food)
-                .Include(o => o.Payment)
-                .Include(o => o.Restaurant)
-                .Where(o => o.Restaurant!.OwnerId == ownerId)
-                .OrderByDescending(o => o.OrderDate)
-                .AsNoTracking()
-                .ToListAsync();
+            var query = _context.Orders
+                           .Include(o => o.OrderDetails)
+                               .ThenInclude(od => od.Food)
+                           .Include(o => o.Payment)
+                           .Include(o => o.Restaurant)
+                           .Where(o => o.Restaurant!.OwnerId == ownerId)
+                           .OrderByDescending(o => o.OrderDate)
+                           .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
         }
 
-        public async Task<IEnumerable<Order>> GetAllOrdersAsync()
+        public async Task<(List<Order> Items, int TotalCount)> GetAllOrdersAsync(int pageNumber, int pageSize)
         {
-            return await _context.Orders
-                .Include(o => o.Payment)
-                .Include(o => o.Restaurant)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(d => d.Food)
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
+            var query = _context.Orders
+                           .Include(o => o.Payment)
+                           .Include(o => o.Restaurant)
+                           .Include(o => o.OrderDetails)
+                               .ThenInclude(d => d.Food)
+                           .OrderByDescending(o => o.OrderDate)
+                        .AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+            return (items, totalCount);
         }
     }
 }

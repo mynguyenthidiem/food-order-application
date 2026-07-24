@@ -54,6 +54,11 @@ namespace backend.Services
                 throw new InvalidOperationException("Restaurant information for this order is missing.");
             }
 
+            if (payment.Order.Status == OrderStatus.Cancelled)
+            {
+                throw new InvalidOperationException("Cancelled orders cannot be paid.");
+            }
+
             if (payment.Order.Restaurant.OwnerId != ownerId)
             {
                 throw new UnauthorizedAccessException("You are not authorized to complete payment for this restaurant's order.");

@@ -5,6 +5,8 @@ namespace backend.Services
     public class FileStorageService : IFileStorageService
     {
         private readonly IWebHostEnvironment _env;
+        private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+
         public FileStorageService(IWebHostEnvironment env)
         {
             _env = env;
@@ -14,7 +16,8 @@ namespace backend.Services
         {
             if (file == null || file.Length == 0)
                 throw new ArgumentException("No file uploaded.");
-
+            if (file.Length > MaxFileSize)
+                throw new ArgumentException("File size cannot exceed 5MB.");
             var webRootPath = _env.WebRootPath;
             if (string.IsNullOrEmpty(webRootPath))
             {

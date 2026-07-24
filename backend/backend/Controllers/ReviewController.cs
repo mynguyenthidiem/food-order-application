@@ -1,4 +1,5 @@
-﻿using backend.DTOs.Review;
+﻿using backend.DTOs.Page;
+using backend.DTOs.Review;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,9 +48,9 @@ namespace backend.Controllers
         }
 
         [HttpGet("food/{foodId}")]
-        public async Task<IActionResult> GetByFood(int foodId)
+        public async Task<IActionResult> GetByFood(int foodId, [FromQuery] PaginationParams pagination)
         {
-            var result = await _service.GetByFood(foodId);
+            var result = await _service.GetByFood(foodId, pagination);
             return Ok(result);
         }
 
